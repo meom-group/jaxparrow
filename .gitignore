@@ -1,6 +1,10 @@
 # general
 **/__pycache__
 
+# build stuff
+dist
+*.egg-info
+
 # project specific
 notebooks/data/**
 
