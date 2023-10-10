@@ -1,0 +1,11 @@
+# general
+**/__pycache__
+
+# project specific
+notebooks/data/**
+
+# IDE related
+.idea
+
+# git stuff
+!**/.gitkeep

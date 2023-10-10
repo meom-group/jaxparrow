@@ -1,0 +1,19 @@
+jaxparrow.grid package
+======================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   jaxparrow.grid.cgrid
+   jaxparrow.grid.variable
+
+Module contents
+---------------
+
+.. automodule:: jaxparrow.grid
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>jaxparrow.grid.variable module &#8212; jaxparrow 0.0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=d45e8c67"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="jaxparrow.tools package" href="jaxparrow.tools.html" />
+    <link rel="prev" title="jaxparrow.grid.cgrid module" href="jaxparrow.grid.cgrid.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-jaxparrow.grid.variable">
+<span id="jaxparrow-grid-variable-module"></span><h1>jaxparrow.grid.variable module<a class="headerlink" href="#module-jaxparrow.grid.variable" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jaxparrow.grid.variable.</span></span><span class="sig-name descname"><span class="pre">Variable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class representing a geophysical variable on a C-grid</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_coriolis_factor">
+<span class="sig-name descname"><span class="pre">get_coriolis_factor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_coriolis_factor" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the Coriolis factor grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the Coriolis factor grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[np.ndarray, np.ma.MaskedArray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_dx">
+<span class="sig-name descname"><span class="pre">get_dx</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_dx" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the spatial step along x grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the spatial step along x grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_dy">
+<span class="sig-name descname"><span class="pre">get_dy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_dy" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the spatial step along y grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the spatial step along y grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_lat">
+<span class="sig-name descname"><span class="pre">get_lat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_lat" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the latitude grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the latitude grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[np.ndarray, np.ma.MaskedArray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_lon">
+<span class="sig-name descname"><span class="pre">get_lon</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_lon" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the longitude grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the longitude grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[np.ndarray, np.ma.MaskedArray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_mask">
+<span class="sig-name descname"><span class="pre">get_mask</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_mask" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the mask grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the mask grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[np.ndarray, None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.get_value">
+<span class="sig-name descname"><span class="pre">get_value</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.get_value" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for the value grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the value grid</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Union[np.ndarray, np.ma.MaskedArray, None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_coriolis_factor">
+<span class="sig-name descname"><span class="pre">set_coriolis_factor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coriolis_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_coriolis_factor" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the Coriolis factor grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>coriolis_factor</strong> (<em>np.ndarray</em>) – Coriolis factor grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_dx">
+<span class="sig-name descname"><span class="pre">set_dx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_dx" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the spatial step along x grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dx</strong> (<em>np.ndarray</em>) – spatial step along x grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_dy">
+<span class="sig-name descname"><span class="pre">set_dy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_dy" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the spatial step along y grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dy</strong> (<em>np.ndarray</em>) – spatial step along y grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_lat">
+<span class="sig-name descname"><span class="pre">set_lat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_lat" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the latitude grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lat</strong> (<em>np.ndarray</em>) – the latitude grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_lon">
+<span class="sig-name descname"><span class="pre">set_lon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_lon" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the longitude grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lon</strong> (<em>np.ndarray</em>) – the longitude grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_mask">
+<span class="sig-name descname"><span class="pre">set_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_mask" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the mask grid.
+Sets as <cite>self.__mask = 1 - mask</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mask</strong> (<em>np.ndarray</em>) – the mask grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.variable.Variable.set_value">
+<span class="sig-name descname"><span class="pre">set_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.variable.Variable.set_value" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for the value grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>Union</em><em>[</em><em>np.ndarray</em><em>, </em><em>np.ma.MaskedArray</em><em>]</em>) – the value grid to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">jaxparrow</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">jaxparrow</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="jaxparrow.html">jaxparrow package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">jaxparrow</a><ul>
+  <li><a href="jaxparrow.html">jaxparrow package</a><ul>
+  <li><a href="jaxparrow.grid.html">jaxparrow.grid package</a><ul>
+      <li>Previous: <a href="jaxparrow.grid.cgrid.html" title="previous chapter">jaxparrow.grid.cgrid module</a></li>
+      <li>Next: <a href="jaxparrow.tools.html" title="next chapter">jaxparrow.tools package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Victor Zaia, Vadim Bertrand.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+      
+      |
+      <a href="_sources/jaxparrow.grid.variable.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

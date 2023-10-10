@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jaxparrow"
+authors = [
+    { name = "Victor Zaia" },
+    { name = "Vadim Bertrand", email = "vadim.bertrand@univ-grenoble-alpes.fr" },
+]
+description = "Computes the inversion of the cyclogeostrophic balance based on a variational formulation approach, using JAX"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["jax", "cyclogeostrophy", "geostrophy", "flow", "swirl"]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache-2.0",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "netCDF4",
+    "numpy",
+    "tqdm",
+    "xarray",
+    "jax"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+notebook = ["jupyterlab", "matplotlib"]
+
+[project.scripts]
+jaxparrow = "jaxparrow:main"
+
+[project.urls]
+"Homepage" = "https://github.com/meom-group/jaxparrow"
+"Bug Tracker" = "https://github.com/meom-group/jaxparrow/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "jaxparrow.__version__"}
+
+[tool.setuptools.packages]
+find = {}
