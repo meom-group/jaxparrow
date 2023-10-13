@@ -60,30 +60,33 @@ def iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nda
 
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
     mask = np.zeros_like(u_geos)
-    errsq = np.inf * np.ones_like(u_geos)
+    errsq_n = np.inf * np.ones_like(u_geos)
     arreps = eps * np.ones_like(u_geos)
-    n_iter = 0
-    while np.any(mask == 0) and n_iter < n_it:
+    for n in tqdm(range(n_it)):
         # next it
         advec_v = geo.compute_advection_v(u_cyclo, v_cyclo, dx_v, dy_v)
         advec_u = geo.compute_advection_u(u_cyclo, v_cyclo, dx_u, dy_u)
         u_np1 = u_geos - (1 / coriolis_factor_u) * advec_v
         v_np1 = v_geos + (1 / coriolis_factor_v) * advec_u
 
-        # compute dist to u_n and v_n
-        errsq_n = np.square(u_np1 - u_cyclo) + np.square(v_np1 - v_cyclo)
+        # compute dist to u_cyclo and v_cyclo
+        errsq_np1 = np.square(u_np1 - u_cyclo) + np.square(v_np1 - v_cyclo)
+        # compute intermediate masks
+        mask_jnp1 = np.where(errsq_np1 < arreps, 1, 0)
+        mask_n = np.where(errsq_np1 > errsq_n, 1, 0)
 
         # update cyclogeostrophic velocities
-        u_cyclo = mask * u_cyclo + (1 - mask) * u_np1
-        v_cyclo = mask * v_cyclo + (1 - mask) * v_np1
+        u_cyclo = mask * u_cyclo + (1 - mask) * (mask_n * u_cyclo + (1 - mask_n) * u_np1)
+        v_cyclo = mask * v_cyclo + (1 - mask) * (mask_n * v_cyclo + (1 - mask_n) * v_np1)
 
-        # update stopping criterion mask (point wise)
-        cond_1 = np.where(errsq_n < arreps, 1, 0)
-        cond_2 = np.where(errsq_n > errsq, 1, 0)
-        mask = np.maximum(mask, np.maximum(cond_1, cond_2))
-
-        n_iter += 1
-        errsq = errsq_n
+        # update mask
+        mask = np.maximum(mask, np.maximum(mask_jnp1, mask_n))
+        # update point wise errors
+        errsq_n = errsq_np1
+      
+        if np.all(mask == 1):
+            break
+          
     return u_cyclo, v_cyclo
 
 
