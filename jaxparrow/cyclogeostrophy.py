@@ -22,8 +22,8 @@ EPSILON_IT = 0.0001
 
 
 def iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-              lat_u: Union[np.ndarray, np.ma.MaskedArray], lat_v: Union[np.ndarray, np.ma.MaskedArray],
-              lon_u: Union[np.ndarray, np.ma.MaskedArray], lon_v: Union[np.ndarray, np.ma.MaskedArray],
+              dx_u: Union[np.ndarray, np.ma.MaskedArray], dx_v: Union[np.ndarray, np.ma.MaskedArray],
+              dy_u: Union[np.ndarray, np.ma.MaskedArray], dy_v: Union[np.ndarray, np.ma.MaskedArray],
               coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray],
               coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray],
               n_it: int = N_IT_IT, eps: float = EPSILON_IT) \
@@ -35,14 +35,14 @@ def iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nda
     :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
     :param v_geos: V geostrophic velocity value
     :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
-    :param lat_u: U latitude
-    :type lat_u: Union[np.ndarray, np.ma.MaskedArray]
-    :param lat_v: V latitude
-    :type lat_v: Union[np.ndarray, np.ma.MaskedArray]
-    :param lon_u: U longitude
-    :type lon_u: Union[np.ndarray, np.ma.MaskedArray]
-    :param lon_v: V longitude
-    :type lon_v: Union[np.ndarray, np.ma.MaskedArray]
+    :param dx_u: U spatial step along x
+    :type dx_u: np.ndarray
+    :param dx_v: V spatial step along x
+    :type dx_v: np.ndarray
+    :param dy_u: U spatial step along y
+    :type dy_u: np.ndarray
+    :param dy_v: V spatial step along y
+    :type dy_v: np.ndarray
     :param coriolis_factor_u: U Coriolis factor
     :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
     :param coriolis_factor_v: V Coriolis factor
@@ -55,9 +55,6 @@ def iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nda
     :returns: U and V cyclogeostrophic velocities
     :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
     """
-    dx_u, dy_u = geo.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geo.compute_spatial_step(lat_v, lon_v)
-
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
     mask = np.zeros_like(u_geos)
     errsq = np.inf * np.ones_like(u_geos)

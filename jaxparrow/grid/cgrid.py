@@ -264,8 +264,8 @@ class CGrid:
             n_it = cyclo.N_IT_IT
 
         u, v = cyclo.iterative(self.__u_geos.get_value(), self.__v_geos.get_value(),
-                               self.__u_cyclo.get_lat(), self.__v_cyclo.get_lat(),
-                               self.__u_cyclo.get_lon(), self.__v_cyclo.get_lon(),
+                                 self.__u_geos.get_dx(), self.__v_geos.get_dx(),
+                                 self.__u_geos.get_dy(), self.__v_geos.get_dy(),
                                self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
                                n_it=n_it, eps=eps)
         return u, v
