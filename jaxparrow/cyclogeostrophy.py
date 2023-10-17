@@ -57,28 +57,33 @@ def iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nda
     """
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
     mask = np.zeros_like(u_geos)
-    errsq = np.inf * np.ones_like(u_geos)
-    arreps = eps * np.ones_like(u_geos)
-    n_iter = 0
-    while np.any(mask == 0) and n_iter < n_it:
+    errsq_n = 1.5 * np.ones_like(u_geos)
+    errsq_eps = eps * np.ones_like(u_geos)
+    for i in tqdm(range(n_it)):
         # next it
         advec_v = geo.compute_advection_v(u_cyclo, v_cyclo, dx_v, dy_v)
         advec_u = geo.compute_advection_u(u_cyclo, v_cyclo, dx_u, dy_u)
-        u_n = u_geos - (1 / coriolis_factor_u) * advec_v
-        v_n = v_geos + (1 / coriolis_factor_v) * advec_u
+        u_np1 = u_geos - (1 / coriolis_factor_u) * advec_v
+        v_np1 = v_geos + (1 / coriolis_factor_v) * advec_u
 
-        # update stopping criterion mask (point wise)
-        errsq_n = np.square(u_n - u_cyclo) + np.square(v_n - v_cyclo)
-        cond_1 = np.where(errsq_n < arreps, 1, 0)
-        cond_2 = np.where(errsq_n > errsq, 1, 0)
-        mask = np.maximum(mask, np.maximum(cond_1, cond_2))  # TODO: should it be done at the end of the iteration step?
+        # compute dist to u_cyclo and v_cyclo
+        errsq_np1 = np.square(u_np1 - u_cyclo) + np.square(v_np1 - v_cyclo)
+        # compute intermediate masks
+        mask_jnp1 = np.where(errsq_np1 < errsq_eps, 1, 0)
+        mask_n = np.where(errsq_np1 > errsq_n, 1, 0)
 
-        # update cyclogeostrophic velocities where it should be
-        u_cyclo = mask * u_cyclo + (1 - mask) * u_n
-        v_cyclo = mask * v_cyclo + (1 - mask) * v_n
+        # update cyclogeostrophic velocities
+        u_cyclo = mask * u_cyclo + (1 - mask) * (mask_n * u_cyclo + (1 - mask_n) * u_np1)
+        v_cyclo = mask * v_cyclo + (1 - mask) * (mask_n * v_cyclo + (1 - mask_n) * v_np1)
 
-        n_iter += 1
-        errsq = errsq_n
+        # update mask
+        mask = np.maximum(mask, np.maximum(mask_jnp1, mask_n))
+
+        errsq_n = errsq_np1
+
+        if np.all(mask == 1):
+            break
+
     return u_cyclo, v_cyclo
 
 
@@ -109,11 +114,14 @@ def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_
     :returns: updated U and V cyclogeostrophic velocities
     :rtype: Tuple[jax.Array, jax.Array]
     """
-    grad_u = grad(f)
-    grad_v = grad(f, argnums=1)
+    grad_fn = grad(f, argnums=(0, 1))
 
-    u_n = u_cyclo - lr * grad_u(u_cyclo, v_cyclo)
-    v_n = v_cyclo - lr * grad_v(u_cyclo, v_cyclo)
+    grad_u, grad_v = grad_fn(u_cyclo, v_cyclo)
+    grad_u = jnp.nan_to_num(grad_u)
+    grad_v = jnp.nan_to_num(grad_v)
+
+    u_n = u_cyclo - lr * grad_u
+    v_n = v_cyclo - lr * grad_v
 
     return u_n, v_n
 
@@ -153,6 +161,29 @@ def _loss(u_geos: np.ndarray, v_geos: np.ndarray,
     J_v = np.sum(
         (v_cyclo - geo.compute_advection_u_jax(u_cyclo, v_cyclo, dx_u, dy_u) / coriolis_factor_v - v_geos) ** 2)
     return J_u + J_v
+
+
+def _gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
+                      f: Callable[[jax.Array, jax.Array], jax.Array], n_it: int, lr: float) \
+        -> Tuple[np.ndarray, np.ndarray]:
+    """Performs the gradient descent
+
+    :param u_geos: U geostrophic velocity value
+    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :param v_geos: V geostrophic velocity value
+    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :param f: loss function
+    :type f: Callable[[np.ndarray, np.ndarray], jax.Array]
+    :param n_it: maximum number of iterations, defaults to N_IT_VAR
+    :type n_it: int, optional
+    :param lr: gradient descent learning rate, defaults to LR_VAR
+    :type lr: float, optional
+    """
+    u_cyclo, v_cyclo = jnp.copy(u_geos), jnp.copy(v_geos)
+    for _ in tqdm(range(n_it)):
+        # update x and y using gradient descent
+        u_cyclo, v_cyclo = _step(f, u_cyclo, v_cyclo, lr)
+    return np.copy(u_cyclo), np.copy(v_cyclo)
 
 
 def variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
@@ -198,9 +229,4 @@ def variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.n
     def f(u: jax.Array, v: jax.Array) -> jax.Array:
         return _loss(u_geos, v_geos, u, v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v)
 
-    u_cyclo, v_cyclo = jnp.copy(u_geos), jnp.copy(v_geos)
-    for _ in tqdm(range(n_it)):
-        # update x and y using gradient descent
-        u_cyclo, v_cyclo = _step(f, u_cyclo, v_cyclo, lr)
-
-    return np.asarray(u_cyclo), np.asarray(v_cyclo)
+    return _gradient_descent(u_geos, v_geos, f, n_it, lr)

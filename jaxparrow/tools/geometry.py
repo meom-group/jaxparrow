@@ -5,6 +5,7 @@ import numpy as np
 import jax.numpy as jnp
 
 EARTH_RADIUS = 6370e3
+EARTH_ANG_SPEED = 7.292115e-5
 P0 = np.pi / 180
 
 
@@ -21,7 +22,7 @@ def compute_coriolis_factor(lat: Union[np.ndarray, np.ma.MaskedArray]) -> Union[
     :returns: Coriolis factor
     :rtype: Union[np.ndarray, np.ma.MaskedArray]
     """
-    return 2 * 7.2722e-05 * np.sin(lat * np.pi / 180)
+    return 2 * EARTH_ANG_SPEED * np.sin(lat * np.pi / 180)
 
 
 def neuman_forward(field: Union[np.ndarray, np.ma.MaskedArray], axis: int = 0) -> np.ndarray:
@@ -56,7 +57,7 @@ def compute_spatial_step(lat: Union[np.ndarray, np.ma.MaskedArray], lon: Union[n
     :type lon: Union[np.ndarray, np.ma.MaskedArray]
     :param bounds: range of acceptable values, defaults to (1e2, 1e4). Out of this range, set to fill_value
     :type bounds: Tuple[float, float], optional
-    :param fill_value: flll value, defaults to 1e12
+    :param fill_value: fill value, defaults to 1e12
     :type fill_value: float, optional
 
     :returns: dx and dy spatial steps
