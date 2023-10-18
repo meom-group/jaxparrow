@@ -104,7 +104,7 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
     mask = np.zeros_like(u_geos)
     res_filter = np.ones((res_filter_size, res_filter_size))
     if res_init == "same":
-        res_n = (np.abs(u_geos) + np.abs(v_geos)) / 2
+        res_n = np.maximum(np.abs(u_geos), np.abs(v_geos))
     elif isinstance(res_init, numbers.Number):
         res_n = res_init * np.ones_like(u_geos)
     else:
