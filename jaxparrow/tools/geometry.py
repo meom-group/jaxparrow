@@ -4,8 +4,9 @@ import jax
 import numpy as np
 import jax.numpy as jnp
 
-EARTH_RADIUS = 6370e3
 EARTH_ANG_SPEED = 7.292115e-5
+EARTH_RADIUS = 6370e3
+GRAVITY = 9.81
 P0 = np.pi / 180
 
 
