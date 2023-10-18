@@ -240,11 +240,11 @@ class CGrid:
         if n_it is None:
             n_it = cyclo.N_IT_VAR
 
-        u, v = cyclo.variational(self.__u_geos.get_value(), self.__v_geos.get_value(),
-                                 self.__u_geos.get_dx(), self.__v_geos.get_dx(),
-                                 self.__u_geos.get_dy(), self.__v_geos.get_dy(),
-                                 self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
-                                 n_it=n_it, lr=lr)
+        u, v = cyclo._variational(self.__u_geos.get_value(), self.__v_geos.get_value(),
+                                  self.__u_geos.get_dx(), self.__v_geos.get_dx(),
+                                  self.__u_geos.get_dy(), self.__v_geos.get_dy(),
+                                  self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
+                                  n_it=n_it, lr=lr)
         return u, v
 
     def _compute_cyclogeostrophy_iterative(self, n_it: Union[int, None], eps: float) \
@@ -263,9 +263,9 @@ class CGrid:
         if n_it is None:
             n_it = cyclo.N_IT_IT
 
-        u, v = cyclo.iterative(self.__u_geos.get_value(), self.__v_geos.get_value(),
-                                 self.__u_geos.get_dx(), self.__v_geos.get_dx(),
-                                 self.__u_geos.get_dy(), self.__v_geos.get_dy(),
-                               self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
-                               n_it=n_it, eps=eps)
+        u, v = cyclo._iterative(self.__u_geos.get_value(), self.__v_geos.get_value(),
+                                self.__u_geos.get_dx(), self.__v_geos.get_dx(),
+                                self.__u_geos.get_dy(), self.__v_geos.get_dy(),
+                                self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
+                                n_it=n_it, res_eps=eps)
         return u, v
