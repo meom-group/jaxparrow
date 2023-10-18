@@ -14,7 +14,7 @@ P0 = np.pi / 180
 # Functions without JAX
 # =============================================================================
 
-def compute_coriolis_factor(lat: Union[np.ndarray, np.ma.MaskedArray]) -> Union[np.ndarray, np.ma.MaskedArray]:
+def compute_coriolis_factor(lat: Union[int, np.ndarray, np.ma.MaskedArray]) -> Union[np.ndarray, np.ma.MaskedArray]:
     """Computes the Coriolis factor from latitudes
 
     :param lat: latitude

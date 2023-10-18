@@ -6,6 +6,7 @@
 # build stuff
 dist
 *.egg-info
+junit
 
 # project specific
 notebooks/data/**
