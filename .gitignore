@@ -1,10 +1,12 @@
 # general
 **/__pycache__
 .pytest_cache
+.ipynb_checkpoints
 
 # build stuff
 dist
 *.egg-info
+junit
 
 # project specific
 notebooks/data/**
