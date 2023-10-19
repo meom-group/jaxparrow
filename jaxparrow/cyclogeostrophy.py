@@ -10,7 +10,7 @@ import numpy as np
 from scipy import ndimage
 from tqdm import tqdm
 
-from jaxparrow.tools import geometry as geo
+from tools import tools
 
 #: Default maximum number of iterations for the iterative approach
 N_IT_IT = 100
@@ -26,6 +26,8 @@ N_IT_VAR = 2000
 #: Default learning rate for the gradient descent of the variational approach
 LR_VAR = 0.005
 
+__all__ = ["cyclogeostrophy", "LR_VAR", "N_IT_IT", "N_IT_VAR", "RES_EPS_IT", "RES_INIT_IT", "RES_FILTER_SIZE_IT"]
+
 
 # =============================================================================
 # Entry point function
@@ -37,17 +39,56 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
                     coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray],
                     coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray],
                     method: Literal["variational", "penven", "ioannou"] = "variational",
-                    n_it: int = N_IT_VAR, lr: float = LR_VAR, err_eps: float = RES_EPS_IT,
-                    errsq_init: float | str = np.inf, err_filter_size: int = RES_FILTER_SIZE_IT):
+                    n_it: int = None, lr: float = LR_VAR, res_eps: float = RES_EPS_IT,
+                    res_init: float | str = np.inf, res_filter_size: int = RES_FILTER_SIZE_IT) \
+        -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
+    """
+    Computes velocities from cyclogeostrophic approximation using a variational (default) or iterative method.
+
+    :param u_geos: U geostrophic velocity value
+    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :param v_geos: V geostrophic velocity value
+    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :param dx_u: U spatial step along x
+    :type dx_u: np.ndarray
+    :param dx_v: V spatial step along x
+    :type dx_v: np.ndarray
+    :param dy_u: U spatial step along y
+    :type dy_u: np.ndarray
+    :param dy_v: V spatial step along y
+    :type dy_v: np.ndarray
+    :param coriolis_factor_u: U Coriolis factor
+    :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
+    :param coriolis_factor_v: V Coriolis factor
+    :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
+    :param method: numerical method to use, defaults to "variational"
+    :type method: Literal["variational", "penven", "ioannou"], optional
+    :param n_it: maximum number of iterations, defaults to N_IT_IT
+    :type n_it: int, optional
+    :param lr: gradient descent learning rate, defaults to LR_VAR
+    :type lr: float, optional
+    :param res_eps: residual tolerance: if residuals are smaller, we consider them as equal to 0, defaults to EPS_IT
+    :type res_eps: float, optional
+    :param res_init: residual initial value: if residuals are larger at the first iteration, we consider that the
+                     solution diverges. If equals to "same" (default) absolute values of the geostrophic velocities are
+                     used. Defaults to RES_INIT_IT
+    :type res_init: float | str, optional
+    :param res_filter_size: size of the convolution filter (from Ioannou) used when computing the residuals,
+                            defaults to RES_FILTER_SIZE_IT
+    :type res_filter_size: int, optional
+
+    :returns: U and V cyclogeostrophic velocities
+    :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
+    """
     if method == "variational":
         u_cyclo, v_cyclo = _variational(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
                                         n_it, lr)
     elif method == "penven":
         u_cyclo, v_cyclo = _iterative(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-                                      n_it, err_eps, errsq_init, res_filter_size=1)
+                                      n_it, res_eps, res_init, res_filter_size=1)
     elif method == "ioannou":
         u_cyclo, v_cyclo = _iterative(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-                                      n_it, err_eps, errsq_init, res_filter_size=err_filter_size)
+                                      n_it, res_eps, res_init, res_filter_size=res_filter_size)
     else:
         raise ValueError("method should be one of [\"variational\", \"penven\", \"ioannou\"]")
 
@@ -100,20 +141,23 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
     :returns: U and V cyclogeostrophic velocities
     :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
     """
-    u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
-    mask = np.zeros_like(u_geos)
-    res_filter = np.ones((res_filter_size, res_filter_size))
+    if n_it is None:
+        n_it = N_IT_IT
     if res_init == "same":
         res_n = np.maximum(np.abs(u_geos), np.abs(v_geos))
     elif isinstance(res_init, numbers.Number):
         res_n = res_init * np.ones_like(u_geos)
     else:
         raise ValueError("res_init should be equal to \"same\" or be a float.")
+
+    u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
+    mask = np.zeros_like(u_geos)
+    res_filter = np.ones((res_filter_size, res_filter_size))
     res_esp = res_eps * np.ones_like(u_geos)
     for _ in tqdm(range(n_it)):
         # next it
-        advec_v = geo.compute_advection_v(u_cyclo, v_cyclo, dx_v, dy_v)
-        advec_u = geo.compute_advection_u(u_cyclo, v_cyclo, dx_u, dy_u)
+        advec_v = tools.compute_advection_v(u_cyclo, v_cyclo, dx_v, dy_v)
+        advec_u = tools.compute_advection_u(u_cyclo, v_cyclo, dx_u, dy_u)
         u_np1 = u_geos - (1 / coriolis_factor_u) * advec_v
         v_np1 = v_geos + (1 / coriolis_factor_v) * advec_u
 
@@ -144,7 +188,7 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
 # =============================================================================
 
 @partial(jit, static_argnums=(0, 3))
-def __step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_cyclo: jax.Array, lr: float) \
+def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_cyclo: jax.Array, lr: float) \
         -> Tuple[jax.Array, jax.Array]:
     """Executes one iteration of the variational approach, using gradient descent
 
@@ -169,45 +213,8 @@ def __step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v
     return u_n, v_n
 
 
-def __loss(u_geos: np.ndarray, v_geos: np.ndarray,
-           u_cyclo: Union[np.ndarray, jax.Array], v_cyclo: Union[np.ndarray, jax.Array],
-           dx_u: np.ndarray, dx_v: np.ndarray, dy_u: np.ndarray, dy_v: np.ndarray,
-           coriolis_factor_u: np.ndarray, coriolis_factor_v: np.ndarray) -> jax.Array:
-    """Computes the loss
-
-    :param u_geos: U geostrophic velocity value
-    :type u_geos: np.ndarray
-    :param v_geos: V geostrophic velocity value
-    :type v_geos: np.ndarray
-    :param u_cyclo: U cyclogeostrophic velocity value
-    :type u_cyclo: Union[np.ndarray, jax.Array]
-    :param v_cyclo: V cyclogeostrophic velocity value
-    :type v_cyclo: Union[np.ndarray, jax.Array]
-    :param dx_u: U spatial step along x
-    :type dx_u: np.ndarray
-    :param dx_v: V spatial step along x
-    :type dx_v: np.ndarray
-    :param dy_u: U spatial step along y
-    :type dy_u: np.ndarray
-    :param dy_v: V spatial step along y
-    :type dy_v: np.ndarray
-    :param coriolis_factor_u: U Coriolis factor
-    :type coriolis_factor_u: np.ndarray
-    :param coriolis_factor_v: V Coriolis factor
-    :type coriolis_factor_v: np.ndarray
-
-    :returns: the loss
-    :rtype: jax.Array
-    """
-    J_u = np.sum(
-        (u_cyclo + geo.compute_advection_v_jax(u_cyclo, v_cyclo, dx_v, dy_v) / coriolis_factor_u - u_geos) ** 2)
-    J_v = np.sum(
-        (v_cyclo - geo.compute_advection_u_jax(u_cyclo, v_cyclo, dx_u, dy_u) / coriolis_factor_v - v_geos) ** 2)
-    return J_u + J_v
-
-
-def __gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-                       f: Callable[[jax.Array, jax.Array], jax.Array], n_it: int, lr: float) \
+def _gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
+                      f: Callable[[jax.Array, jax.Array], jax.Array], n_it: int, lr: float) \
         -> Tuple[np.ndarray, np.ndarray]:
     """Performs the gradient descent
 
@@ -225,7 +232,7 @@ def __gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Uni
     u_cyclo, v_cyclo = jnp.copy(u_geos), jnp.copy(v_geos)
     for _ in tqdm(range(n_it)):
         # update x and y using gradient descent
-        u_cyclo, v_cyclo = __step(f, u_cyclo, v_cyclo, lr)
+        u_cyclo, v_cyclo = _step(f, u_cyclo, v_cyclo, lr)
     return np.copy(u_cyclo), np.copy(v_cyclo)
 
 
@@ -269,7 +276,11 @@ def _variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.
     if isinstance(coriolis_factor_v, np.ma.MaskedArray):
         coriolis_factor_v = coriolis_factor_v.filled(1)
 
-    def f(u: jax.Array, v: jax.Array) -> jax.Array:
-        return __loss(u_geos, v_geos, u, v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v)
+    if n_it is None:
+        n_it = N_IT_VAR
 
-    return __gradient_descent(u_geos, v_geos, f, n_it, lr)
+    def f(u: jax.Array, v: jax.Array) -> jax.Array:
+        return tools.compute_cyclogeostrophic_diff_jax(u_geos, v_geos, u, v, dx_u, dx_v, dy_u, dy_v,
+                                                       coriolis_factor_u, coriolis_factor_v)
+
+    return _gradient_descent(u_geos, v_geos, f, n_it, lr)

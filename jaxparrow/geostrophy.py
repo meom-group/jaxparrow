@@ -2,7 +2,9 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from jaxparrow.tools import geometry as geo
+from tools import tools as geo
+
+__all__ = ["geostrophy"]
 
 
 # =============================================================================

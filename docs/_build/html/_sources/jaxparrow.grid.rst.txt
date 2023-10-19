@@ -8,7 +8,6 @@ Submodules
    :maxdepth: 4
 
    jaxparrow.grid.cgrid
-   jaxparrow.grid.variable
 
 Module contents
 ---------------

@@ -2,8 +2,11 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from jaxparrow.grid import variable
-from jaxparrow import geostrophy as geos, cyclogeostrophy as cyclo
+from grid import variable
+from geostrophy import geostrophy
+from cyclogeostrophy import cyclogeostrophy, N_IT_IT, N_IT_VAR, RES_EPS_IT, LR_VAR
+
+__all__ = ["CGrid"]
 
 
 class CGrid:
@@ -74,7 +77,7 @@ class CGrid:
         :rtype: variable.Variable
         """
         return self.__ssh
-    
+
     def get_u(self) -> variable.Variable:
         """Getter for U reference velocity field
 
@@ -189,16 +192,16 @@ class CGrid:
         :returns: U and V geostrophic velocity fields
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
-        u_geos, v_geos = geos.geostrophy(self.__ssh.get_value(), self.__ssh.get_dx(), self.__ssh.get_dy(),
-                                         self.__u_geos.get_coriolis_factor(), self.__v_geos.get_coriolis_factor())
+        u_geos, v_geos = geostrophy(self.__ssh.get_value(), self.__ssh.get_dx(), self.__ssh.get_dy(),
+                                    self.__u_geos.get_coriolis_factor(), self.__v_geos.get_coriolis_factor())
 
         self.__u_geos.set_value(u_geos)
         self.__v_geos.set_value(v_geos)
 
         return u_geos, v_geos
 
-    def compute_cyclogeostrophy(self, variational: bool = True, n_it: int = None, lr: float = cyclo.LR_VAR,
-                                eps: float = cyclo.EPSILON_IT) \
+    def compute_cyclogeostrophy(self, variational: bool = True, n_it: int = None, lr: float = LR_VAR,
+                                eps: float = RES_EPS_IT) \
             -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
         """Computes the cyclogeostrophic velocities using either the variational or the iterative approach
 
@@ -216,7 +219,7 @@ class CGrid:
         """
         if self.__u_geos.get_value() is None or self.__v_geos.get_value() is None:
             self.compute_geostrophy()
-        
+
         if variational:
             u_cyclo, v_cyclo = self._compute_cyclogeostrophy_variational(n_it, lr)
         else:
@@ -233,18 +236,20 @@ class CGrid:
 
         :param n_it: maximum number of iterations, defaults to cyclo.N_IT_VAR if set to None
         :type n_it: Union[int, None]
+        :param lr: learning rate, defaults to cyclo.LR_VAR
+        :type lr: float, optional
 
         :returns: U and V cyclogeostrophic velocity fields
         :rtype: Tuple[np.ndarray, np.ndarray]
         """
         if n_it is None:
-            n_it = cyclo.N_IT_VAR
+            n_it = N_IT_VAR
 
-        u, v = cyclo._variational(self.__u_geos.get_value(), self.__v_geos.get_value(),
-                                  self.__u_geos.get_dx(), self.__v_geos.get_dx(),
-                                  self.__u_geos.get_dy(), self.__v_geos.get_dy(),
-                                  self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
-                                  n_it=n_it, lr=lr)
+        u, v = cyclogeostrophy(self.__u_geos.get_value(), self.__v_geos.get_value(),
+                               self.__u_geos.get_dx(), self.__v_geos.get_dx(),
+                               self.__u_geos.get_dy(), self.__v_geos.get_dy(),
+                               self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
+                               n_it=n_it, lr=lr)
         return u, v
 
     def _compute_cyclogeostrophy_iterative(self, n_it: Union[int, None], eps: float) \
@@ -261,11 +266,11 @@ class CGrid:
         :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
         """
         if n_it is None:
-            n_it = cyclo.N_IT_IT
+            n_it = N_IT_IT
 
-        u, v = cyclo._iterative(self.__u_geos.get_value(), self.__v_geos.get_value(),
-                                self.__u_geos.get_dx(), self.__v_geos.get_dx(),
-                                self.__u_geos.get_dy(), self.__v_geos.get_dy(),
-                                self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
-                                n_it=n_it, res_eps=eps)
+        u, v = cyclogeostrophy(self.__u_geos.get_value(), self.__v_geos.get_value(),
+                               self.__u_geos.get_dx(), self.__v_geos.get_dx(),
+                               self.__u_geos.get_dy(), self.__v_geos.get_dy(),
+                               self.__u_cyclo.get_coriolis_factor(), self.__v_cyclo.get_coriolis_factor(),
+                               method="penven", n_it=n_it, res_eps=eps)
         return u, v
