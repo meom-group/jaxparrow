@@ -34,13 +34,12 @@ __all__ = ["cyclogeostrophy", "LR_VAR", "N_IT_IT", "N_IT_VAR", "RES_EPS_IT", "RE
 # =============================================================================
 
 def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-                    dx_u: Union[np.ndarray, np.ma.MaskedArray], dx_v: Union[np.ndarray, np.ma.MaskedArray],
-                    dy_u: Union[np.ndarray, np.ma.MaskedArray], dy_v: Union[np.ndarray, np.ma.MaskedArray],
+                    dx_u: np.ndarray, dx_v: np.ndarray, dy_u: np.ndarray, dy_v: np.ndarray,
                     coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray],
                     coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray],
                     method: Literal["variational", "penven", "ioannou"] = "variational",
                     n_it: int = None, lr: float = LR_VAR, res_eps: float = RES_EPS_IT,
-                    res_init: float | str = np.inf, res_filter_size: int = RES_FILTER_SIZE_IT) \
+                    res_init: Union[float | Literal["same"]] = RES_INIT_IT, res_filter_size: int = RES_FILTER_SIZE_IT) \
         -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
     """
     Computes velocities from cyclogeostrophic approximation using a variational (default) or iterative method.
@@ -72,7 +71,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     :param res_init: residual initial value: if residuals are larger at the first iteration, we consider that the
                      solution diverges. If equals to "same" (default) absolute values of the geostrophic velocities are
                      used. Defaults to RES_INIT_IT
-    :type res_init: float | str, optional
+    :type res_init: Union[float | Literal["same"]], optional
     :param res_filter_size: size of the convolution filter (from Ioannou) used when computing the residuals,
                             defaults to RES_FILTER_SIZE_IT
     :type res_filter_size: int, optional
@@ -80,15 +79,25 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     :returns: U and V cyclogeostrophic velocities
     :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
     """
+    mask = np.ma.getmaskarray(u_geos).astype(int)
+    if isinstance(u_geos, np.ma.MaskedArray):
+        u_geos = u_geos.filled(0)
+    if isinstance(v_geos, np.ma.MaskedArray):
+        v_geos = v_geos.filled(0)
+    if isinstance(coriolis_factor_u, np.ma.MaskedArray):
+        coriolis_factor_u = coriolis_factor_u.filled(1)
+    if isinstance(coriolis_factor_v, np.ma.MaskedArray):
+        coriolis_factor_v = coriolis_factor_v.filled(1)
+
     if method == "variational":
         u_cyclo, v_cyclo = _variational(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
                                         n_it, lr)
     elif method == "penven":
         u_cyclo, v_cyclo = _iterative(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-                                      n_it, res_eps, res_init, res_filter_size=1)
+                                      mask, n_it, res_eps, res_init, res_filter_size=1)
     elif method == "ioannou":
         u_cyclo, v_cyclo = _iterative(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-                                      n_it, res_eps, res_init, res_filter_size=res_filter_size)
+                                      mask, n_it, res_eps, res_init, res_filter_size)
     else:
         raise ValueError("method should be one of [\"variational\", \"penven\", \"ioannou\"]")
 
@@ -99,21 +108,18 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
 # Iterative method
 # =============================================================================
 
-def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-               dx_u: Union[np.ndarray, np.ma.MaskedArray], dx_v: Union[np.ndarray, np.ma.MaskedArray],
-               dy_u: Union[np.ndarray, np.ma.MaskedArray], dy_v: Union[np.ndarray, np.ma.MaskedArray],
-               coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray],
-               coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray],
-               n_it: int = N_IT_IT, res_eps: float = RES_EPS_IT, res_init: float | str = RES_INIT_IT,
+def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: np.ndarray,
+               dy_u: np.ndarray, dy_v: np.ndarray, coriolis_factor_u: np.ndarray, coriolis_factor_v: np.ndarray,
+               mask: np.ndarray, n_it: int = N_IT_IT, res_eps: float = RES_EPS_IT, res_init: float | str = RES_INIT_IT,
                res_filter_size: int = RES_FILTER_SIZE_IT) \
         -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
     """
     Computes velocities from cyclogeostrophic approximation using the iterative method from Penven et al. (2014)
 
     :param u_geos: U geostrophic velocity value
-    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type u_geos: np.ndarray
     :param v_geos: V geostrophic velocity value
-    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type v_geos: np.ndarray
     :param dx_u: U spatial step along x
     :type dx_u: np.ndarray
     :param dx_v: V spatial step along x
@@ -123,9 +129,11 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
     :param dy_v: V spatial step along y
     :type dy_v: np.ndarray
     :param coriolis_factor_u: U Coriolis factor
-    :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
+    :type coriolis_factor_u: np.ndarray
     :param coriolis_factor_v: V Coriolis factor
-    :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
+    :type coriolis_factor_v: np.ndarray
+    :param mask: initial data mask
+    :type mask: np.ndarray
     :param n_it: maximum number of iterations, defaults to N_IT_IT
     :type n_it: int, optional
     :param res_eps: residual tolerance: if residuals are smaller, we consider them as equal to 0, defaults to EPS_IT
@@ -151,7 +159,6 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
         raise ValueError("res_init should be equal to \"same\" or be a float.")
 
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
-    mask = np.zeros_like(u_geos)
     res_filter = np.ones((res_filter_size, res_filter_size))
     res_esp = res_eps * np.ones_like(u_geos)
     for _ in tqdm(range(n_it)):
@@ -172,9 +179,8 @@ def _iterative(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.nd
         u_cyclo = mask * u_cyclo + (1 - mask) * (mask_n * u_cyclo + (1 - mask_n) * u_np1)
         v_cyclo = mask * v_cyclo + (1 - mask) * (mask_n * v_cyclo + (1 - mask_n) * v_np1)
 
-        # update mask
+        # update mask and residuals
         mask = np.maximum(mask, np.maximum(mask_jnp1, mask_n))
-
         res_n = res_np1
 
         if np.all(mask == 1):
@@ -213,15 +219,14 @@ def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_
     return u_n, v_n
 
 
-def _gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-                      f: Callable[[jax.Array, jax.Array], jax.Array], n_it: int, lr: float) \
-        -> Tuple[np.ndarray, np.ndarray]:
+def _gradient_descent(u_geos: np.ndarray, v_geos: np.ndarray, f: Callable[[jax.Array, jax.Array], jax.Array],
+                      n_it: int, lr: float) -> Tuple[np.ndarray, np.ndarray]:
     """Performs the gradient descent
 
     :param u_geos: U geostrophic velocity value
-    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type u_geos: np.ndarray
     :param v_geos: V geostrophic velocity value
-    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type v_geos: np.ndarray
     :param f: loss function
     :type f: Callable[[np.ndarray, np.ndarray], jax.Array]
     :param n_it: maximum number of iterations, defaults to N_IT_VAR
@@ -236,17 +241,15 @@ def _gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Unio
     return np.copy(u_cyclo), np.copy(v_cyclo)
 
 
-def _variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-                 dx_u: np.ndarray, dx_v: np.ndarray, dy_u: np.ndarray, dy_v: np.ndarray,
-                 coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray],
-                 coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray],
+def _variational(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: np.ndarray,
+                 dy_u: np.ndarray, dy_v: np.ndarray, coriolis_factor_u: np.ndarray, coriolis_factor_v: np.ndarray,
                  n_it: int = N_IT_VAR, lr: float = LR_VAR) -> Tuple[np.ndarray, np.ndarray]:
     """Computes the cyclogeostrophic balance using the variational method
 
     :param u_geos: U geostrophic velocity value
-    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type u_geos: np.ndarray
     :param v_geos: V geostrophic velocity value
-    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type v_geos: np.ndarray
     :param dx_u: U spatial step along x
     :type dx_u: np.ndarray
     :param dx_v: V spatial step along x
@@ -256,9 +259,9 @@ def _variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.
     :param dy_v: V spatial step along y
     :type dy_v: np.ndarray
     :param coriolis_factor_u: U Coriolis factor
-    :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
+    :type coriolis_factor_u: np.ndarray
     :param coriolis_factor_v: V Coriolis factor
-    :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
+    :type coriolis_factor_v: np.ndarray
     :param n_it: maximum number of iterations, defaults to N_IT_VAR
     :type n_it: int, optional
     :param lr: gradient descent learning rate, defaults to LR_VAR
@@ -267,15 +270,6 @@ def _variational(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.
     :returns: U and V cyclogeostrophic velocities
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
-    if isinstance(u_geos, np.ma.MaskedArray):
-        u_geos = u_geos.filled(0)
-    if isinstance(v_geos, np.ma.MaskedArray):
-        v_geos = v_geos.filled(0)
-    if isinstance(coriolis_factor_u, np.ma.MaskedArray):
-        coriolis_factor_u = coriolis_factor_u.filled(1)
-    if isinstance(coriolis_factor_v, np.ma.MaskedArray):
-        coriolis_factor_v = coriolis_factor_v.filled(1)
-
     if n_it is None:
         n_it = N_IT_VAR
 
