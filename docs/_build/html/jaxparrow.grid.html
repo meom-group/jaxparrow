@@ -59,31 +59,232 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="jaxparrow.grid.variable.html">jaxparrow.grid.variable module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable"><code class="docutils literal notranslate"><span class="pre">Variable</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_coriolis_factor"><code class="docutils literal notranslate"><span class="pre">Variable.get_coriolis_factor()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_dx"><code class="docutils literal notranslate"><span class="pre">Variable.get_dx()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_dy"><code class="docutils literal notranslate"><span class="pre">Variable.get_dy()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_lat"><code class="docutils literal notranslate"><span class="pre">Variable.get_lat()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_lon"><code class="docutils literal notranslate"><span class="pre">Variable.get_lon()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_mask"><code class="docutils literal notranslate"><span class="pre">Variable.get_mask()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.get_value"><code class="docutils literal notranslate"><span class="pre">Variable.get_value()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_coriolis_factor"><code class="docutils literal notranslate"><span class="pre">Variable.set_coriolis_factor()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_dx"><code class="docutils literal notranslate"><span class="pre">Variable.set_dx()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_dy"><code class="docutils literal notranslate"><span class="pre">Variable.set_dy()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_lat"><code class="docutils literal notranslate"><span class="pre">Variable.set_lat()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_lon"><code class="docutils literal notranslate"><span class="pre">Variable.set_lon()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_mask"><code class="docutils literal notranslate"><span class="pre">Variable.set_mask()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="jaxparrow.grid.variable.html#jaxparrow.grid.variable.Variable.set_value"><code class="docutils literal notranslate"><span class="pre">Variable.set_value()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 </ul>
 </div>
 </section>
 <section id="module-jaxparrow.grid">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-jaxparrow.grid" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">jaxparrow.grid.</span></span><span class="sig-name descname"><span class="pre">CGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ssh_lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ssh_lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u_lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u_lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ssh_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ssh_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u_geos_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_geos_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class representing the C-grid over which flows will be computed</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.compute_cyclogeostrophy">
+<span class="sig-name descname"><span class="pre">compute_cyclogeostrophy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variational</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_it</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.005</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0001</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskedArray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.compute_cyclogeostrophy" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the cyclogeostrophic velocities using either the variational or the iterative approach</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variational</strong> (<em>bool</em><em>, </em><em>optional</em>) – flag indicating which approach to use, defaults to True</p></li>
+<li><p><strong>n_it</strong> (<em>int</em><em>, </em><em>optional</em>) – maximum number of iterations, defaults to None</p></li>
+<li><p><strong>lr</strong> (<em>float</em><em>, </em><em>optional</em>) – learning rate for the variational method, defaults to cyclo.LR_VAR</p></li>
+<li><p><strong>eps</strong> (<em>float</em><em>, </em><em>optional</em>) – residual tolerance for the iterative method, defaults to cyclo.EPSILON_IT</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>U and V cyclogeostrophic velocity fields</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.compute_geostrophy">
+<span class="sig-name descname"><span class="pre">compute_geostrophy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.compute_geostrophy" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the geostrophic velocities from SSH values and derivatives, and U and V coriolis factor</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>U and V geostrophic velocity fields</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[np.ndarray, np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_ssh">
+<span class="sig-name descname"><span class="pre">get_ssh</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_ssh" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for SSH field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SSH field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_u">
+<span class="sig-name descname"><span class="pre">get_u</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_u" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for U reference velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>U reference velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_u_cyclo">
+<span class="sig-name descname"><span class="pre">get_u_cyclo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_u_cyclo" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for U cylogeostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>U cylogeostrophic velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_u_geos">
+<span class="sig-name descname"><span class="pre">get_u_geos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_u_geos" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for U geostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>U geostrophic velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_v">
+<span class="sig-name descname"><span class="pre">get_v</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_v" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for V reference velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>V reference velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_v_cyclo">
+<span class="sig-name descname"><span class="pre">get_v_cyclo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_v_cyclo" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for V cylogeostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>V cylogeostrophic velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.get_v_geos">
+<span class="sig-name descname"><span class="pre">get_v_geos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Variable</span></span></span><a class="headerlink" href="#jaxparrow.grid.CGrid.get_v_geos" title="Link to this definition">¶</a></dt>
+<dd><p>Getter for V geostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>V geostrophic velocity field</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_ssh">
+<span class="sig-name descname"><span class="pre">set_ssh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ssh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_ssh" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for SSH field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ssh</strong> – SSH field to set</p>
+</dd>
+<dt class="field-even">Type<span class="colon">:</span></dt>
+<dd class="field-even"><p>variable.Field</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_u">
+<span class="sig-name descname"><span class="pre">set_u</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_u" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for U reference velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>variable.Variable</em>) – U reference velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_u_cyclo">
+<span class="sig-name descname"><span class="pre">set_u_cyclo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u_cyclo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_u_cyclo" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for U cyclogeostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Param<span class="colon">:</span></dt>
+<dd class="field-odd"><p>U cyclogeostrophic velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_u_geos">
+<span class="sig-name descname"><span class="pre">set_u_geos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u_geos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_u_geos" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for U geostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u_geos</strong> (<em>variable.Variable</em>) – U geostrophic velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_v">
+<span class="sig-name descname"><span class="pre">set_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_v" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for V reference velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v</strong> (<em>variable.Variable</em>) – V reference velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_v_cyclo">
+<span class="sig-name descname"><span class="pre">set_v_cyclo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v_cyclo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_v_cyclo" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for V cyclogeostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v_cyclo</strong> (<em>variable.Variable</em>) – V cyclogeostrophic velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jaxparrow.grid.CGrid.set_v_geos">
+<span class="sig-name descname"><span class="pre">set_v_geos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v_geos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#jaxparrow.grid.CGrid.set_v_geos" title="Link to this definition">¶</a></dt>
+<dd><p>Setter for V geostrophic velocity field</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v_geos</strong> (<em>variable.Variable</em>) – V geostrophic velocity field to set</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 
