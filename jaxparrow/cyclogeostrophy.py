@@ -241,15 +241,14 @@ def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_
     return u_n, v_n, loss_val
 
 
-def _gradient_descent(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[np.ndarray, np.ma.MaskedArray],
-                      f: Callable[[jax.Array, jax.Array], jax.Array], n_it: int, lr: float,
-                      run_inspection: bool = False) -> tuple:
+def _gradient_descent(u_geos: np.ndarray, v_geos: np.ndarray, f: Callable[[jax.Array, jax.Array], jax.Array], 
+                      n_it: int, lr: float, run_inspection: bool = False) -> tuple:
     """Performs the gradient descent
 
     :param u_geos: U geostrophic velocity value
-    :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type u_geos: np.ndarray
     :param v_geos: V geostrophic velocity value
-    :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
+    :type v_geos: np.ndarray
     :param f: loss function
     :type f: Callable[[np.ndarray, np.ndarray], jax.Array]
     :param n_it: maximum number of iterations, defaults to N_IT_VAR
