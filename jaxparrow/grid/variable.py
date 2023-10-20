@@ -3,7 +3,9 @@ from typing import Union
 import numpy as np
 import numpy.ma as ma
 
-from jaxparrow.tools import geometry as geo
+from jaxparrow.tools import tools
+
+__all__ = []
 
 
 class Variable:
@@ -34,8 +36,8 @@ class Variable:
         self.__apply_mask()
 
         #: the Coriolis factor grid
-        self.__coriolis_factor = geo.compute_coriolis_factor(self.__lat)
-        dx, dy = geo.compute_spatial_step(self.__lat, self.__lon)
+        self.__coriolis_factor = tools.compute_coriolis_factor(self.__lat)
+        dx, dy = tools.compute_spatial_step(self.__lat, self.__lon)
         #: the spatial step along x grid
         self.__dx = dx
         #: the spatial step along y grid

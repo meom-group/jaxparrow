@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.extend([os.path.dirname(os.getcwd())])
+sys.path.extend([os.path.dirname(os.getcwd()), os.path.join(os.path.dirname(os.getcwd()), "jaxparrow")])
 autodoc_member_order = 'groupwise'
 exclude_patterns = ['_build', '**tests**']
 

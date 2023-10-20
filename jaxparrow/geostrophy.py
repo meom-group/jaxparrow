@@ -2,9 +2,9 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from jaxparrow.tools import geometry as geo
+from tools import tools as geo
 
-GRAVITY = 9.81
+__all__ = ["geostrophy"]
 
 
 # =============================================================================
@@ -50,7 +50,7 @@ def geostrophy(ssh: Union[np.ndarray, np.ma.MaskedArray],
     cv = geo.interpolate(cv, axis=0)
 
     # Computing the geostrophic velocities
-    u_geos = - GRAVITY * grad_ssh_y / cu
-    v_geos = GRAVITY * grad_ssh_x / cv
+    u_geos = - geo.GRAVITY * grad_ssh_y / cu
+    v_geos = geo.GRAVITY * grad_ssh_x / cv
 
     return u_geos, v_geos
