@@ -12,7 +12,7 @@ EARTH_RADIUS = 6370e3
 GRAVITY = 9.81
 P0 = np.pi / 180
 
-__all__ = ["compute_coriolis_factor", "compute_spatial_step", "compute_cyclogeostrophic_diff_jax"]
+__all__ = ["compute_coriolis_factor", "compute_spatial_step"]
 
 
 # =============================================================================
@@ -51,7 +51,7 @@ def _neuman_forward(field: Union[np.ndarray, np.ma.MaskedArray], axis: int = 0) 
 
 
 def compute_spatial_step(lat: Union[np.ndarray, np.ma.MaskedArray], lon: Union[np.ndarray, np.ma.MaskedArray],
-                         bounds: Tuple[float, float] = (1e2, 1e4), fill_value: float = 1e12) \
+                         bounds: Tuple[float, float] = (1e2, 1e4), fill_value: float = 1e3) \
         -> Tuple[np.ndarray, np.ndarray]:
     """Computes dx and dy spatial steps of a grid defined by lat, lon.
     It makes use of the distance-on-a-sphere formula with Taylor expansion approximations of cos and arccos functions

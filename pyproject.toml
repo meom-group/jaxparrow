@@ -5,8 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jaxparrow"
 authors = [
-    { name = "Victor Zaia" },
     { name = "Vadim Bertrand", email = "vadim.bertrand@univ-grenoble-alpes.fr" },
+    { name = "Victor Zaia" },
+    { name = "Emmanuel Cosme", email = "emmanuel.cosme@univ-grenoble-alpes.fr" },
+    { name = "Julien Le Sommer", email = "julien.lesommer@univ-grenoble-alpes.fr" },
 ]
 description = "Computes the inversion of the cyclogeostrophic balance based on a variational formulation approach, using JAX"
 readme = "README.md"
