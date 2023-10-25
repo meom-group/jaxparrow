@@ -13,7 +13,7 @@ authors = [
 description = "Computes the inversion of the cyclogeostrophic balance based on a variational formulation approach, using JAX"
 readme = "README.md"
 requires-python = ">=3.9"
-keywords = ["jax", "cyclogeostrophy", "geostrophy", "flow", "swirl"]
+keywords = ["cyclogeostrophy", "eddy", "flow", "geostrophy", "jax", "swirl", "velocity"]
 license = {text = "Apache-2.0"}
 classifiers = [
     "Programming Language :: Python :: 3",
