@@ -16,7 +16,7 @@ def simulate_gaussian_eddy(r0: float, dxy: float, eta0: float, latitude: int) \
 
     ssh = simulate_gaussian_ssh(r0, eta0, R)
     u_geos, v_geos = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
-    u_cyclo, v_cyclo = simulate_gaussian_cyclo(r0, X, Y, u_geos, v_geos, coriolis_factor)
+    u_cyclo, v_cyclo = simulate_gaussian_cyclo(r0, np.arctan2(Y, X), u_geos, v_geos, coriolis_factor)
 
     return X, Y, R, dXY, coriolis_factor, ssh, u_geos, v_geos, u_cyclo, v_cyclo
 
@@ -27,18 +27,21 @@ def simulate_gaussian_ssh(r0: float, eta0: float, R: np.ndarray) -> np.ndarray:
 
 def simulate_gaussian_geos(r0: float, X: np.ndarray, Y: np.ndarray, ssh: np.ndarray, coriolis_factor: np.ndarray) \
         -> [np.ndarray, np.ndarray]:
-    u_geos = 2 * tools.GRAVITY * Y * ssh / (coriolis_factor * r0 ** 2)
-    v_geos = - 2 * tools.GRAVITY * X * ssh / (coriolis_factor * r0 ** 2)
+    def f():
+        return 2 * tools.GRAVITY * ssh / (coriolis_factor * r0 ** 2)
+    u_geos = Y * f()
+    v_geos = - X * f()
     return u_geos, v_geos
 
 
-def simulate_gaussian_cyclo(r0: float, X: np.ndarray, Y: np.ndarray, u_geos: np.ndarray, v_geos: np.ndarray,
+def simulate_gaussian_cyclo(r0: float, theta: np.ndarray, u_geos: np.ndarray, v_geos: np.ndarray,
                             coriolis_factor: np.ndarray) -> [np.ndarray, np.ndarray]:
+    def f():
+        return azim_cyclo**2 / (r0 * coriolis_factor)
     azim_geos = compute_azimuthal_magnitude(u_geos, v_geos)
     azim_cyclo = 2 * azim_geos / (1 + np.sqrt(1 + 4 * azim_geos / (coriolis_factor * r0)))
-    theta = np.arctan2(Y, X)
-    u_cyclo = u_geos + np.sin(theta) * azim_cyclo**2 / (r0 * coriolis_factor)
-    v_cyclo = v_geos - np.cos(theta) * azim_cyclo**2 / (r0 * coriolis_factor)
+    u_cyclo = u_geos + np.sin(theta) * f()
+    v_cyclo = v_geos - np.cos(theta) * f()
     return u_cyclo, v_cyclo
 
 
