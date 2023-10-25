@@ -40,7 +40,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
                     method: Literal["variational", "penven", "ioannou"] = "variational",
                     n_it: int = None, lr: float = LR_VAR, res_eps: float = RES_EPS_IT,
                     res_init: Union[float | Literal["same"]] = RES_INIT_IT, res_filter_size: int = RES_FILTER_SIZE_IT) \
-        -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
+        -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes velocities from cyclogeostrophic approximation using a variational (default) or iterative method.
 
@@ -77,7 +77,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     :type res_filter_size: int, optional
 
     :returns: U and V cyclogeostrophic velocities
-    :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
+    :rtype: Tuple[np.ndarray, np.ndarray]
     """
     mask = np.ma.getmaskarray(u_geos).astype(int)
     if isinstance(u_geos, np.ma.MaskedArray):
@@ -111,8 +111,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
 def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: np.ndarray,
                dy_u: np.ndarray, dy_v: np.ndarray, coriolis_factor_u: np.ndarray, coriolis_factor_v: np.ndarray,
                mask: np.ndarray, n_it: int = N_IT_IT, res_eps: float = RES_EPS_IT, res_init: float | str = RES_INIT_IT,
-               res_filter_size: int = RES_FILTER_SIZE_IT) \
-        -> Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]:
+               res_filter_size: int = RES_FILTER_SIZE_IT) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes velocities from cyclogeostrophic approximation using the iterative method from Penven et al. (2014)
 
@@ -147,7 +146,7 @@ def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: n
     :type res_filter_size: int, optional
 
     :returns: U and V cyclogeostrophic velocities
-    :rtype: Tuple[Union[np.ndarray, np.ma.MaskedArray], Union[np.ndarray, np.ma.MaskedArray]]
+    :rtype: Tuple[np.ndarray, np.ndarray]
     """
     if n_it is None:
         n_it = N_IT_IT
