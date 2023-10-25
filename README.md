@@ -1,40 +1,52 @@
-# Cyclogeostrophic Balance Code
+# jaxparrow
 
-This repository contains code for performing inversion of oceanographic data using various algorithms and approaches. The goal of the code is to estimate the velocity of an ocean system from sea surface height observations.
+***jaxparrow*** implements a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
 
-To use this code, you will need to install the following dependencies:
+It leverages the power of [JAX](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem. 
+Given the Sea Surface Height (SSH) or the geostrophic velocity field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
 
-* JAX
-* Xarray
-* Numpy.ma module
+## Installation
 
-## Structure
+The package is Pip-installable:
+```shell
+pip install jaxparrow
+```
 
-The code is structured as follows:
-
-* **Model**: Contains the implementation of "Model" object that is responsible for storing all the data taken from the netCDF files.
-* **PreProcessor**: Contains the implementation of the "PreProcessor" object that is responsible for processing the data from the netCDF files and storing them in the model object. The code works with a C-type grid and requires four files: sea surface height (ssh), u-component, v-component, and mask files. Depending on the configuration of the files, the code may need to be modified to read the data correctly.
-* **Processor**: Contains the implementation of the "Processor" object that is responsible for performing the inversion of the data and storing the results in the model object.
-* **PostProcessor**: Contains the implementation of the "PostProcessor" object that is responsible for exporting the inversion results to netCDF files. The output consists of two files: u and v components of the cyclogeostrophic velocity. The files will be saved in the same folder as the input files.
+**<ins>However</ins>**, users with access to GPUs or TPUs should first install JAX separately in order to fully benefit from its high-performance computing capacities. 
+See [JAX documentation](https://jax.readthedocs.io/en/latest/installation.html). \
+By default, **jaxparrow** will install a CPU-only version of JAX if no other version is already present in the Python environment.
 
 ## Usage
 
-To use the inversion code, you need to provide input data in the form of netCDF files, as well as a configuration file specifying the inversion parameters.
+### As a package
 
-The inversion code implements algorithms for estimating the cyclogeostrophic velocity from the data, including:
+Two functions are directly available from `jaxparrow`:
 
-* A new gradient-based approach
-* Iterative method
+- `geostrophy`: computes the geostrophic velocity field (returns two `numpy 2darray`) from a SSH `2darray`, two `2darray` of spatial steps, and two `2darray` of Coriolis factors.
+- `cyclogeostrophy`: computes the cyclogeostrophic velocity field (returns two `2darray`) from two `2darray` of geostrophic velocities, four `2darray` of spatial steps, and two `2darray` of Coriolis factors.
 
-Before using the code, it is important to verify the path to the netCDF files and their names. These parameters can be changed in "PreProcessor.py" under the variables: "dir_data", "name_mask", "name_ssh", "name_u", and "name_v". Alternatively, you can uncomment the lines that call a function allowing interactive selection of the files (first line in the functions "read_ssh", "read_u", "read_v", and "read_mask") and comment the manual ones.
+*Because **jaxparrow** uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids, and the SSH on one grid.*
 
-The default method to solving the problem is the new gradient-based approach. To use the iterative method, you need to change the variable "method" in "Processor.py", function "solve_model", to "1".
+In a Python script, assuming that the input grids have already been initialised / imported, it would simply resort to:
 
-The files containing the data used during the implementation of the code can be found using the following link:
-https://1drv.ms/f/s!Aq7KsFIdmDGepjMT6o77ko-JRRZu?e=hpxeKa
+```python
+from jaxparrow import cyclogeostrophy, geostrophy
 
-This repository also contains a notebook demonstrating the basic functionalities of the code.
+u_geos, v_geos = geostrophy(ssh=ssh,    
+                            dx_ssh=dx_ssh, dy_ssh=dy_ssh,
+                            coriolis_factor_u=coriolis_factor_u, coriolis_factor_v=coriolis_factor_v)
+u_cyclo, v_cyclo = cyclogeostrophy(u_geos=u_geos, v_geos=v_geos,
+                                   dx_u=dx_u, dx_v=dx_v, dy_u=dy_u, dy_v=dy_v,
+                                   coriolis_factor_u=coriolis_factor_u, coriolis_factor_v=coriolis_factor_v)
+```
 
-## License
+By default, the `cyclogeostrophy` function relies on our variational method.
+Its `method` argument provides the ability to use an iterative method instead, either the one described by [Penven *et al.*](https://doi.org/10.1016/j.dsr2.2013.10.015), or the one by [Ioannou *et al.*](https://doi.org/10.1029/2019JC015031).
+Additional arguments also give a finer control over the three approaches hyperparameters. \
+See [**jaxparrow** documentation](docs/_build/html/index.html) for more details.
 
-Copyright 2023. See [LICENSE](https://github.com/VictorZaia/cyclogeostrophic_balance/blob/main/LICENSE) for additional details.
+[Notebooks](notebooks/README.md) are available as step-by-step examples.
+
+### As an executable
+
+***TBP***
