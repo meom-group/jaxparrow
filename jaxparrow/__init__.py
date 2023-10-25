@@ -1,5 +1,5 @@
-from cyclogeostrophy import cyclogeostrophy
-from geostrophy import geostrophy
+from .cyclogeostrophy import cyclogeostrophy
+from .geostrophy import geostrophy
 
 __all__ = ["cyclogeostrophy", "geostrophy"]
-__version__ = "0.0.1"
+__version__ = "0.0.2"

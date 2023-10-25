@@ -10,7 +10,7 @@ import numpy as np
 from scipy import signal
 from tqdm import tqdm
 
-from tools import tools
+from .tools import tools
 
 #: Default maximum number of iterations for the iterative approach
 N_IT_IT = 100

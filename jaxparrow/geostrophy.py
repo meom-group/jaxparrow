@@ -2,7 +2,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from tools import tools as geo
+from .tools import tools
 
 __all__ = ["geostrophy"]
 
@@ -33,24 +33,24 @@ def geostrophy(ssh: Union[np.ndarray, np.ma.MaskedArray],
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
     # Computing the gradient of the ssh
-    grad_ssh_x, grad_ssh_y = geo.compute_gradient(ssh, dx_ssh, dy_ssh)
+    grad_ssh_x, grad_ssh_y = tools.compute_gradient(ssh, dx_ssh, dy_ssh)
 
     # Interpolation of the data (moving the grad into the u and v position)
-    grad_ssh_y = geo.interpolate(grad_ssh_y, axis=0)
-    grad_ssh_y = geo.interpolate(grad_ssh_y, axis=1)
+    grad_ssh_y = tools.interpolate(grad_ssh_y, axis=0)
+    grad_ssh_y = tools.interpolate(grad_ssh_y, axis=1)
 
-    grad_ssh_x = geo.interpolate(grad_ssh_x, axis=1)
-    grad_ssh_x = geo.interpolate(grad_ssh_x, axis=0)
+    grad_ssh_x = tools.interpolate(grad_ssh_x, axis=1)
+    grad_ssh_x = tools.interpolate(grad_ssh_x, axis=0)
 
     # Interpolating the coriolis
-    cu = geo.interpolate(coriolis_factor_u, axis=0)
-    cu = geo.interpolate(cu, axis=1)
+    cu = tools.interpolate(coriolis_factor_u, axis=0)
+    cu = tools.interpolate(cu, axis=1)
 
-    cv = geo.interpolate(coriolis_factor_v, axis=1)
-    cv = geo.interpolate(cv, axis=0)
+    cv = tools.interpolate(coriolis_factor_v, axis=1)
+    cv = tools.interpolate(cv, axis=0)
 
     # Computing the geostrophic velocities
-    u_geos = - geo.GRAVITY * grad_ssh_y / cu
-    v_geos = geo.GRAVITY * grad_ssh_x / cv
+    u_geos = - tools.GRAVITY * grad_ssh_y / cu
+    v_geos = tools.GRAVITY * grad_ssh_x / cv
 
     return u_geos, v_geos

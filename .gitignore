@@ -4,6 +4,7 @@
 .ipynb_checkpoints
 
 # build stuff
+build
 dist
 *.egg-info
 junit

@@ -43,7 +43,7 @@ u_cyclo, v_cyclo = cyclogeostrophy(u_geos=u_geos, v_geos=v_geos,
 By default, the `cyclogeostrophy` function relies on our variational method.
 Its `method` argument provides the ability to use an iterative method instead, either the one described by [Penven *et al.*](https://doi.org/10.1016/j.dsr2.2013.10.015), or the one by [Ioannou *et al.*](https://doi.org/10.1029/2019JC015031).
 Additional arguments also give a finer control over the three approaches hyperparameters. \
-See [**jaxparrow** documentation](docs/_build/index.html) for more details.
+See [**jaxparrow** documentation](https://meom-group.github.io/jaxparrow/) for more details.
 
 [Notebooks](notebooks/README.md) are available as step-by-step examples.
 
