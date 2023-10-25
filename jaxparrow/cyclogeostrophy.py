@@ -7,7 +7,7 @@ import jax
 from jax import grad, jit
 import jax.numpy as jnp
 import numpy as np
-from scipy import ndimage
+from scipy import signal
 from tqdm import tqdm
 
 from tools import tools
@@ -155,21 +155,22 @@ def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: n
     elif isinstance(res_init, numbers.Number):
         res_n = res_init * np.ones_like(u_geos)
     else:
-        raise ValueError("res_init should be equal to \"same\" or be a float.")
+        raise ValueError("res_init should be equal to \"same\" or be a number.")
 
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
     res_filter = np.ones((res_filter_size, res_filter_size))
+    res_weights = signal.correlate(np.ones_like(u_geos), res_filter, mode="same")
     res_esp = res_eps * np.ones_like(u_geos)
     for _ in tqdm(range(n_it)):
         # next it
         advec_v = tools.compute_advection_v(u_cyclo, v_cyclo, dx_v, dy_v)
         advec_u = tools.compute_advection_u(u_cyclo, v_cyclo, dx_u, dy_u)
-        u_np1 = u_geos - (1 / coriolis_factor_u) * advec_v
-        v_np1 = v_geos + (1 / coriolis_factor_v) * advec_u
+        u_np1 = u_geos - (1 / coriolis_factor_u) * np.nan_to_num(advec_v, nan=0, posinf=0, neginf=0)
+        v_np1 = v_geos + (1 / coriolis_factor_v) * np.nan_to_num(advec_u, nan=0, posinf=0, neginf=0)
 
         # compute dist to u_cyclo and v_cyclo
-        res_np1 = np.square(u_np1 - u_cyclo) + np.square(v_np1 - v_cyclo)
-        res_np1 = ndimage.convolve(res_np1, res_filter, mode="nearest") / res_filter.size  # apply convolution
+        res_np1 = np.abs(u_np1 - u_cyclo) + np.abs(v_np1 - v_cyclo)
+        res_np1 = signal.correlate(res_np1, res_filter, mode="same", method="direct") / res_weights  # apply filter
         # compute intermediate masks
         mask_jnp1 = np.where(res_np1 < res_esp, 1, 0)
         mask_n = np.where(res_np1 > res_n, 1, 0)
@@ -212,8 +213,8 @@ def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_
     grad_u = grad(f)
     grad_v = grad(f, argnums=1)
 
-    u_n = u_cyclo - lr * grad_u(u_cyclo, v_cyclo)
-    v_n = v_cyclo - lr * grad_v(u_cyclo, v_cyclo)
+    u_n = u_cyclo - lr * jnp.nan_to_num(grad_u(u_cyclo, v_cyclo), nan=0, posinf=0, neginf=0)
+    v_n = v_cyclo - lr * jnp.nan_to_num(grad_v(u_cyclo, v_cyclo), nan=0, posinf=0, neginf=0)
 
     return u_n, v_n
 

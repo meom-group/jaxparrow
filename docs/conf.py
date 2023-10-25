@@ -15,8 +15,8 @@ exclude_patterns = ['_build', '**tests**']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'jaxparrow'
-copyright = '2023, Victor Zaia, Vadim Bertrand'
-author = 'Victor Zaia, Vadim Bertrand'
+copyright = '2023, Victor Zaia, Vadim Bertrand, Emmanuel Cosme, Julien Le Sommer'
+author = 'Victor Zaia, Vadim Bertrand, Emmanuel Cosme, Julien Le Sommer'
 release = '0.0.1'
 
 # -- General configuration ---------------------------------------------------

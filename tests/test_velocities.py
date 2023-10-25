@@ -7,7 +7,7 @@ import gaussian_eddy as ge
 
 
 class TestVelocities:
-    X, Y, R, dXY, coriolis_factor, ssh, u_geos, v_geos, u_cyclo, v_cyclo = ge.simulate_gaussian_eddy(50e3, 3e3, .1, 36)
+    _, _, _, dXY, coriolis_factor, ssh, u_geos, v_geos, u_cyclo, v_cyclo = ge.simulate_gaussian_eddy(50e3, 3e3, .1, 36)
 
     def test_geostrophy(self):
         u_geos_est, v_geos_est = geostrophy(self.ssh, self.dXY, self.dXY,
