@@ -7,7 +7,6 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   jaxparrow.grid
    jaxparrow.tools
 
 Submodules
