@@ -32,7 +32,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 notebook = ["jupyterlab", "matplotlib"]
-dev = ["pytest", "sphinx", "twine", "build"]
+dev = ["pytest", "sphinx", "myst_parser", "twine", "build"]
 
 [project.scripts]
 jaxparrow = "jaxparrow:main"
