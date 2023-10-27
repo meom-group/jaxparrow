@@ -1,2 +1,2 @@
-.. include:: ../notebooks/gaussian_eddy/gaussian_eddy.md
+.. include:: ../notebooks/gaussian_eddy/index.md
    :parser: myst_parser.sphinx_
