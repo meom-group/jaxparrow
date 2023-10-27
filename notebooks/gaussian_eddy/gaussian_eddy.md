@@ -33,7 +33,7 @@ plt.colorbar(im, ax=ax2)
 plt.show()
 ```
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_6_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_6_0.png?raw=true)
    
 ```python
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -46,7 +46,7 @@ plt.colorbar(im, ax=ax2)
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_7_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_7_0.png?raw=true)
    
 ## Geostrophic velocity
 
@@ -69,7 +69,7 @@ ax.quiver(X, Y, u_geos, v_geos, color='k')
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_11_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_11_0.png?raw=true)
     
 ```python
 ax = plt.subplot()
@@ -81,7 +81,7 @@ ax.vlines(R.flatten()[np.abs(azim_geos).flatten().argmax()],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_12_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_12_0.png?raw=true)
     
 ### Geostrophic balance
 
@@ -107,7 +107,7 @@ ax2.quiver(X, Y, u_geos_est, v_geos_est, color='k')
 plt.show()
 ```
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_15_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_15_0.png?raw=true)
   
 ```python
 ax = plt.subplot()
@@ -119,7 +119,7 @@ ax.vlines(R.flatten()[np.abs(azim_geos_est).flatten().argmax()],
 plt.show()
 ```
  
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_16_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_16_0.png?raw=true)
 
 ```python
 ge.compute_rmse(u_geos, u_geos_est), ge.compute_rmse(v_geos, v_geos_est)
@@ -149,7 +149,7 @@ ax.quiver(X, Y, u_cyclo, v_cyclo, color='k')
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_21_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_21_0.png?raw=true)
 
 ```python
 ax = plt.subplot()
@@ -161,7 +161,7 @@ ax.vlines(R.flatten()[np.abs(azim_cyclo).flatten().argmax()],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_22_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_22_0.png?raw=true)
 
 ### Variational estimation
 
@@ -188,7 +188,7 @@ ax2.quiver(X, Y, u_cyclo_est, v_cyclo_est, color='k')
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_25_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_25_0.png?raw=true)
 
 ```python
 ax = plt.subplot()
@@ -200,7 +200,7 @@ ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_26_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_26_0.png?raw=true)
 
 ```python
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
@@ -237,7 +237,7 @@ ax2.quiver(X, Y, u_cyclo_est, v_cyclo_est, color='k')
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_31_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_31_0.png?raw=true)
 
 ```python
 ax = plt.subplot()
@@ -249,7 +249,7 @@ ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_32_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_32_0.png?raw=true)
 
 ```python
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
@@ -282,7 +282,7 @@ ax2.quiver(X, Y, u_cyclo_est, v_cyclo_est, color='k')
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_36_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_36_0.png?raw=true)
 
 ```python
 ax = plt.subplot()
@@ -294,7 +294,7 @@ ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/gaussian_eddy/output_37_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_37_0.png?raw=true)
 
 ```python
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)

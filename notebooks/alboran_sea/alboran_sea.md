@@ -104,7 +104,7 @@ ax2.quiver(lon[::quiver_step, ::quiver_step], lat[::quiver_step, ::quiver_step],
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_11_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_11_0.png?raw=true)
 
 ### Compute spatial steps
 
@@ -167,9 +167,9 @@ im = ax2.pcolormesh(lon, lat, (np.sqrt(uvel**2 + vvel**2) - np.sqrt(u_geos**2 + 
 plt.colorbar(im, ax=ax2)
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_20_2.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_2.png?raw=true)
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_20_3.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_3.png?raw=true)
 
 ## Cyclogeostrophic balance
 
@@ -214,9 +214,9 @@ im = ax2.pcolormesh(lon, lat, (np.sqrt(uvel**2 + vvel**2) - np.sqrt(u_var**2 + v
 plt.colorbar(im, ax=ax2)
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_26_2.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_2.png?raw=true)
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_26_3.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_3.png?raw=true)
     
 ### Penven method
 
@@ -259,9 +259,9 @@ im = ax2.pcolormesh(lon, lat, (np.sqrt(uvel**2 + vvel**2) - np.sqrt(u_penven**2 
 plt.colorbar(im, ax=ax2)
 ```
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_31_1.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_1.png?raw=true)
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_31_2.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_2.png?raw=true)
     
 ### Ioannou method
 
@@ -304,9 +304,9 @@ im = ax2.pcolormesh(lon, lat, (np.sqrt(uvel**2 + vvel**2) - np.sqrt(u_ioannou**2
 plt.colorbar(im, ax=ax2)
 ```
 
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_36_1.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_1.png?raw=true)
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_36_2.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_2.png?raw=true)
    
 #### Comparison to Penven velocities
 
@@ -331,7 +331,7 @@ im = ax.pcolormesh(lon, lat, np.sqrt(u_penven**2 + v_penven**2) - np.sqrt(u_ioan
 plt.colorbar(im, ax=ax)
 ```
  
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_38_1.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_1.png?raw=true)
     
-![png](https://github.com/meom-group/jaxparrow/tree/main/notebooks/alboran_sea/output_38_2.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_2.png?raw=true)
    
