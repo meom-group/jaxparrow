@@ -60,7 +60,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
     :param coriolis_factor_v: V Coriolis factor
     :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
-    :param method: numerical method to use, defaults to "variational"
+    :param method: estimation method to use, defaults to "variational"
     :type method: Literal["variational", "penven", "ioannou"], optional
     :param n_it: maximum number of iterations, defaults to N_IT_IT
     :type n_it: int, optional
