@@ -11,18 +11,11 @@ Welcome to jaxparrow's documentation!
    :caption: Contents:
 
 Contents:
---------
+---------
 
 .. toctree::
    :maxdepth: 2
 
-   usage
-   modules
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   description
+   notebooks
+   api

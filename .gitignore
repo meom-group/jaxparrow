@@ -8,6 +8,7 @@ build
 dist
 *.egg-info
 junit
+docs/_build
 
 # project specific
 notebooks/data/**
