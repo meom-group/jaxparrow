@@ -1,4 +1,4 @@
-name: Build jaxparrow html documentation
+name: Docs
 
 on:
   push:
