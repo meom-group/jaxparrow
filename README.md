@@ -1,5 +1,7 @@
 # jaxparrow
 
+[![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
+
 ***jaxparrow*** implements a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
 
 It leverages the power of [JAX](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem. 
