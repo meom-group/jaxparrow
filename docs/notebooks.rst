@@ -7,5 +7,5 @@ Notebooks
 .. toctree::
    :maxdepth: 2
 
-   gaussian.eddy
-   alboran.sea
+   gaussian_eddy
+   alboran_sea

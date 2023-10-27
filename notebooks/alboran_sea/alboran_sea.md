@@ -3,6 +3,8 @@
 ## Input data
 
 In this example, we use NEMO model outputs (SSH and velocities), stored in several netCDF files.
+Data can be downloaded [here](https://1drv.ms/f/s!Aq7KsFIdmDGepjMT6o77ko-JRRZu?e=hpxeKa), and the files stored inside the `data` folder.
+
 Measurements are located on a C-grid.
 
 ```python
