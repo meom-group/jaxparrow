@@ -1,5 +1,6 @@
 # jaxparrow
 
+![Python version](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/meom-group/jaxparrow/master/.github/workflows/python-package.yml&label=Python&query=$.jobs.build.strategy.matrix["python-version"])
 ![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
 ![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)
 
