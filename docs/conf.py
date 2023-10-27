@@ -5,7 +5,7 @@ sys.path.extend([os.path.dirname(os.getcwd()), os.path.join(os.path.dirname(os.g
 autodoc_member_order = "groupwise"
 exclude_patterns = ["_build", "**tests**"]
 
-from jaxparrow import __version__
+from version import __version__
 
 
 # Configuration file for the Sphinx documentation builder.

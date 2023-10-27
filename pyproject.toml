@@ -42,7 +42,7 @@ jaxparrow = "jaxparrow:main"
 "Bug Tracker" = "https://github.com/meom-group/jaxparrow/issues"
 
 [tool.setuptools.dynamic]
-version = {attr = "jaxparrow.__version__"}
+version = {attr = "jaxparrow.version.__version__"}
 
 [tool.setuptools.packages]
 find = {}
