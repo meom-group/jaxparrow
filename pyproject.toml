@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "netCDF4",
     "numpy",
+    "pyyaml",
     "tqdm",
     "xarray",
     "jax",

@@ -12,18 +12,18 @@ from tqdm import tqdm
 
 from .tools import tools
 
-#: Default maximum number of iterations for the iterative approach
+#: Default maximum number of iterations for Penven and Ioannou approaches
 N_IT_IT = 100
-#: Default residual tolerance of the iterative approach
+#: Default residual tolerance of Penven and Ioannou approaches
 RES_EPS_IT = 0.0001
-#: Default residual value used during the first iteration
+#: Default residual value used during the first iteration of Penven and Ioannou approaches
 RES_INIT_IT = "same"
-#: Default size of the grid points used to compute the residual in Ioannou's iterative approach
+#: Default size of the grid points used to compute the residual in Ioannou's approach
 RES_FILTER_SIZE_IT = 3
 
-#: Default maximum number of iterations for the variational approach
+#: Default maximum number of iterations for our variational approach
 N_IT_VAR = 2000
-#: Default learning rate for the gradient descent of the variational approach
+#: Default learning rate for the gradient descent of our variational approach
 LR_VAR = 0.005
 
 __all__ = ["cyclogeostrophy", "LR_VAR", "N_IT_IT", "N_IT_VAR", "RES_EPS_IT", "RES_INIT_IT", "RES_FILTER_SIZE_IT"]
@@ -60,7 +60,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
     :param coriolis_factor_v: V Coriolis factor
     :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
-    :param method: numerical method to use, defaults to "variational"
+    :param method: estimation method to use, defaults to "variational"
     :type method: Literal["variational", "penven", "ioannou"], optional
     :param n_it: maximum number of iterations, defaults to N_IT_IT
     :type n_it: int, optional
