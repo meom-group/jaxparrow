@@ -21,6 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install sphinx myst_parser
+          pip install .
       - name: Sphinx build
         run: |
           sphinx-build docs docs/_build
