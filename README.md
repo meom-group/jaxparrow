@@ -1,5 +1,3 @@
-<base target="_blank">
-
 # jaxparrow
 
 ![Python](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/meom-group/jaxparrow/master/.github/workflows/python-package.yml&label=Python&query=$.jobs.build.strategy.matrix["python-version"])
