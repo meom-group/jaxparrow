@@ -1,3 +1,5 @@
+<base target="_blank">
+
 # jaxparrow
 
 ![Python](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/meom-group/jaxparrow/master/.github/workflows/python-package.yml&label=Python&query=$.jobs.build.strategy.matrix["python-version"])
@@ -54,4 +56,11 @@ See **jaxparrow** [API documentation](https://meom-group.github.io/jaxparrow/api
 
 ### As an executable
 
-***TBP***
+**jaxparrow** is also available from the command line:
+```shell
+jaxparrow --conf_path conf.yml
+```
+The YAML configuration file `conf.yml` instruct where input netCDF files are locally stored, and how to retrieve variables and coordinates from them.
+It also provides the path of the output netCDF file. Optionally, it can specify which cyclogeostrophic approach should be applied and its hyperparameters.
+
+An example configuration file detailing all the required and optional entries can be found [here](docs/example-conf.yml).

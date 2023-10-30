@@ -1,0 +1,95 @@
+# ----------------
+# ----------------
+# Required entries
+# ----------------
+# ----------------
+
+# -----------------------
+# Input Dataset variables
+# -----------------------
+# file_path and var_name are required, index is optional
+
+# longitude grid of the SSH
+lon_ssh:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  var_name: "nav_lon"
+
+# latitude grid of the SSH
+lat_ssh:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  var_name: "nav_lat"
+
+# SSH grid
+ssh:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  var_name: "sossheig"
+  index: [0]
+
+# longitude grid of the U component
+lon_u:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sozocrtx.nc"
+  var_name: "nav_lon"
+
+# latitude grid of the U component
+lat_u:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sozocrtx.nc"
+  var_name: "nav_lat"
+
+# longitude grid of the V component
+lon_v:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_somecrty.nc"
+  var_name: "nav_lon"
+
+# latitude grid of the V component
+lat_v:
+  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_somecrty.nc"
+  var_name: "nav_lat"
+
+# ------------------------
+# Output Dataset full path
+# ------------------------
+
+out_path: "notebooks/data/out.nc"
+
+
+# --------------
+# --------------
+# Optional entry
+# --------------
+# --------------
+
+# -----------------------
+# Input Dataset variables
+# -----------------------
+# file_path and var_name are required, index is optional
+# mask arrays are expected to be boolean or numeric, with True (or 1) for valid cells and False (or 0) for invalid ones.
+
+# mask of the SSH
+mask_ssh:
+  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  var_name: "tmask"
+  index: [0, 0]  # here we select the first time and elevation elements (optional, depends on the datastructure)
+
+# mask of the U component
+mask_u:
+  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  var_name: "umask"
+  index: [0, 0]
+
+# mask of the V component
+mask_v:
+  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  var_name: "vmask"
+  index: [0, 0]
+
+# ---------------------------------------
+# Arguments to the cyclogeostrophy method
+# ---------------------------------------
+# allows to tune the cyclogeostrophic approach applied, and its hyperparameters.
+# refer to the documentation for a comprehensive list of the available optional arguments:
+# https://meom-group.github.io/jaxparrow/jaxparrow.cyclogeostrophy.html
+# if not provided, default values are used.
+
+cyclogeostrophy:
+  method: "variational"
+  n_it: 100

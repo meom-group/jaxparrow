@@ -12,18 +12,18 @@ from tqdm import tqdm
 
 from .tools import tools
 
-#: Default maximum number of iterations for the iterative approach
+#: Default maximum number of iterations for Penven and Ioannou approaches
 N_IT_IT = 100
-#: Default residual tolerance of the iterative approach
+#: Default residual tolerance of Penven and Ioannou approaches
 RES_EPS_IT = 0.0001
-#: Default residual value used during the first iteration
+#: Default residual value used during the first iteration of Penven and Ioannou approaches
 RES_INIT_IT = "same"
-#: Default size of the grid points used to compute the residual in Ioannou's iterative approach
+#: Default size of the grid points used to compute the residual in Ioannou's approach
 RES_FILTER_SIZE_IT = 3
 
-#: Default maximum number of iterations for the variational approach
+#: Default maximum number of iterations for our variational approach
 N_IT_VAR = 2000
-#: Default learning rate for the gradient descent of the variational approach
+#: Default learning rate for the gradient descent of our variational approach
 LR_VAR = 0.005
 
 __all__ = ["cyclogeostrophy", "LR_VAR", "N_IT_IT", "N_IT_VAR", "RES_EPS_IT", "RES_INIT_IT", "RES_FILTER_SIZE_IT"]
