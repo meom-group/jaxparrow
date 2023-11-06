@@ -145,7 +145,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_14_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_14_0.png?raw=true)
     
 
 
@@ -223,19 +223,19 @@ plt.colorbar(im, ax=ax2)
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_19_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_19_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_19_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_3.png?raw=true)
     
 
 
@@ -314,19 +314,19 @@ plt.colorbar(im, ax=ax2)
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_25_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_25_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_25_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_3.png?raw=true)
     
 
 
@@ -403,19 +403,19 @@ plt.colorbar(im, ax=ax2)
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_30_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_30_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_30_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_3.png?raw=true)
     
 
 
@@ -492,19 +492,19 @@ plt.colorbar(im, ax=ax2)
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_35_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_35_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_35_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_3.png?raw=true)
     
 
 
@@ -561,18 +561,18 @@ plt.colorbar(im, ax=ax2)
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_37_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_37_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_37_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_3.png?raw=true)
     
 
