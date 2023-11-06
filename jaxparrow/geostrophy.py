@@ -18,18 +18,18 @@ def geostrophy(ssh: Union[np.ndarray, np.ma.MaskedArray],
         -> Tuple[np.ndarray, np.ndarray]:
     """Computes the geostrophic balance
 
-    :param ssh: Sea Surface Height (SSH) value
+    :param ssh: Sea Surface Height (SSH), NxM grid
     :type ssh: Union[np.ndarray, np.ma.MaskedArray]
-    :param dx_ssh: SSH spatial step along x
+    :param dx_ssh: SSH spatial step along x, NxM grid
     :type dx_ssh: Union[np.ndarray, np.ma.MaskedArray]
-    :param dy_ssh: SSH spatial step along y
+    :param dy_ssh: SSH spatial step along y, NxM grid
     :type dy_ssh: Union[np.ndarray, np.ma.MaskedArray]
-    :param coriolis_factor_u: U Coriolis factor
+    :param coriolis_factor_u: U Coriolis factor, NxM grid
     :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
-    :param coriolis_factor_v: V Coriolis factor
+    :param coriolis_factor_v: V Coriolis factor, NxM grid
     :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
 
-    :returns: U and V geostrophic velocities
+    :returns: U and V geostrophic velocities, NxM grids
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
     # Computing the gradient of the ssh

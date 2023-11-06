@@ -109,7 +109,7 @@ plt.show()
 ### Compute spatial steps
 
 The netCDF files we use as input do not contain the spatial steps required to compute derivatives later.
-The sub-module `tools` provides the utility function `compute_spatial_step` to compute them from our grids.
+The sub-module `tools` provides the utility function `compute_spatial_step` to compute them from our grids. It applies Von Neuman boundary conditions to those fields.
 
 ```python
 dx_ssh, dy_ssh = compute_spatial_step(lat_ssh, lon_ssh)

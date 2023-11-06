@@ -45,21 +45,21 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
     """
     Computes velocities from cyclogeostrophic approximation using a variational (default) or iterative method.
 
-    :param u_geos: U geostrophic velocity value
+    :param u_geos: U geostrophic velocity, NxM grid
     :type u_geos: Union[np.ndarray, np.ma.MaskedArray]
-    :param v_geos: V geostrophic velocity value
+    :param v_geos: V geostrophic velocity, NxM grid
     :type v_geos: Union[np.ndarray, np.ma.MaskedArray]
-    :param dx_u: U spatial step along x
+    :param dx_u: U spatial step along x, NxM grid
     :type dx_u: np.ndarray
-    :param dx_v: V spatial step along x
+    :param dx_v: V spatial step along x, NxM grid
     :type dx_v: np.ndarray
-    :param dy_u: U spatial step along y
+    :param dy_u: U spatial step along y, NxM grid
     :type dy_u: np.ndarray
-    :param dy_v: V spatial step along y
+    :param dy_v: V spatial step along y, NxM grid
     :type dy_v: np.ndarray
-    :param coriolis_factor_u: U Coriolis factor
+    :param coriolis_factor_u: U Coriolis factor, NxM grid
     :type coriolis_factor_u: Union[np.ndarray, np.ma.MaskedArray]
-    :param coriolis_factor_v: V Coriolis factor
+    :param coriolis_factor_v: V Coriolis factor, NxM grid
     :type coriolis_factor_v: Union[np.ndarray, np.ma.MaskedArray]
     :param method: estimation method to use, defaults to "variational"
     :type method: Literal["variational", "iterative"], optional
@@ -83,7 +83,7 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
                             defaults to RES_FILTER_SIZE_IT
     :type res_filter_size: int, optional
 
-    :returns: U and V cyclogeostrophic velocities
+    :returns: U and V cyclogeostrophic velocities, NxM grids
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
     mask = np.ma.getmaskarray(u_geos).astype(int)
