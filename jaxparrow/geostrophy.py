@@ -53,4 +53,4 @@ def geostrophy(ssh: Union[np.ndarray, np.ma.MaskedArray],
     u_geos = - tools.GRAVITY * grad_ssh_y / cu
     v_geos = tools.GRAVITY * grad_ssh_x / cv
 
-    return u_geos, v_geos
+    return np.nan_to_num(u_geos, nan=0, posinf=0, neginf=0), np.nan_to_num(v_geos, nan=0, posinf=0, neginf=0)

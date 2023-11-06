@@ -95,6 +95,8 @@ def cyclogeostrophy(u_geos: Union[np.ndarray, np.ma.MaskedArray], v_geos: Union[
         coriolis_factor_u = coriolis_factor_u.filled(1)
     if isinstance(coriolis_factor_v, np.ma.MaskedArray):
         coriolis_factor_v = coriolis_factor_v.filled(1)
+    u_geos = np.nan_to_num(u_geos, nan=0, posinf=0, neginf=0)
+    v_geos = np.nan_to_num(v_geos, nan=0, posinf=0, neginf=0)
 
     if method == "variational":
         u_cyclo, v_cyclo = _variational(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
@@ -163,8 +165,6 @@ def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: n
         res_n = res_init * np.ones_like(u_geos)
     else:
         raise ValueError("res_init should be equal to \"same\" or be a number.")
-    if not use_res_filter:
-        res_filter_size = 1
 
     u_cyclo, v_cyclo = np.copy(u_geos), np.copy(v_geos)
     res_filter = np.ones((res_filter_size, res_filter_size))
@@ -178,7 +178,8 @@ def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: n
 
         # compute dist to u_cyclo and v_cyclo
         res_np1 = np.abs(u_np1 - u_cyclo) + np.abs(v_np1 - v_cyclo)
-        res_np1 = signal.correlate(res_np1, res_filter, mode="same", method="direct") / res_weights  # apply filter
+        if use_res_filter:
+            res_np1 = signal.correlate(res_np1, res_filter, mode="same") / res_weights  # apply filter
         # compute intermediate masks
         mask_jnp1 = np.where(res_np1 < res_eps, 1, 0)
         mask_n = np.where(res_np1 > res_n, 1, 0)

@@ -1,5 +1,18 @@
 # Gaussian eddy
 
+```python
+import os
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from jaxparrow import cyclogeostrophy, geostrophy
+
+sys.path.extend([os.path.join(os.path.dirname(os.getcwd()), "tests")])
+from tests import gaussian_eddy as ge
+```
+
 We use a gaussian eddy for our functional tests, as analytical solutions can be derived in that setting.
 
 The gaussian eddy we consider is of the form \\(\eta = \eta_0 \exp^{-(r/R_0)^2}\\), with \\(R_0\\) its radius, \\(\eta_0\\) the SSH anomaly at its center, and \\(r\\) the radial distance. 

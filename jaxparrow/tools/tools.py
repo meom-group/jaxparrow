@@ -12,7 +12,7 @@ EARTH_RADIUS = 6370e3
 GRAVITY = 9.81
 P0 = np.pi / 180
 
-__all__ = ["compute_coriolis_factor", "compute_spatial_step"]
+__all__ = ["compute_coriolis_factor", "compute_derivative", "compute_spatial_step"]
 
 
 # =============================================================================
@@ -106,18 +106,18 @@ def interpolate(field: Union[np.ndarray, np.ma.MaskedArray], axis: int = 0) -> n
     return f
 
 
-def _compute_derivative(field: Union[np.ndarray, np.ma.MaskedArray], dxy: Union[np.ndarray, np.ma.MaskedArray],
-                        axis: int = 0) -> np.ndarray:
+def compute_derivative(field: Union[np.ndarray, np.ma.MaskedArray], dxy: Union[np.ndarray, np.ma.MaskedArray],
+                       axis: int = 0) -> np.ndarray:
     """Computes the x or y derivatives of a 2D field using finite differences
 
-    :param field: field values
+    :param field: field values, NxM grid
     :type field: Union[np.ndarray, np.ma.MaskedArray]
-    :param dxy: spatial steps
+    :param dxy: spatial steps, NxM grid
     :type dxy: Union[np.ndarray, np.ma.MaskedArray]
     :param axis: axis along which boundary conditions are applied, defaults to 0
     :type axis: int, optional
 
-    :returns: derivatives
+    :returns: derivatives, NxM grid
     :rtype: np.ndarray
     """
     f = np.copy(field)
@@ -144,7 +144,7 @@ def compute_gradient(field: Union[np.ndarray, np.ma.MaskedArray],
     :returns: gradients
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
-    fx, fy = _compute_derivative(field, dx, axis=1), _compute_derivative(field, dy, axis=0)
+    fx, fy = compute_derivative(field, dx, axis=1), compute_derivative(field, dy, axis=0)
     return fx, fy
 
 
@@ -169,10 +169,10 @@ def compute_advection_u(u: Union[np.ndarray, np.ma.MaskedArray], v: Union[np.nda
     u_adv = np.copy(u)
     v_adv = np.copy(v)
 
-    dudx = _compute_derivative(u, dx, axis=1)  # h points
+    dudx = compute_derivative(u, dx, axis=1)  # h points
     dudx = interpolate(dudx, axis=0)  # v points
 
-    dudy = _compute_derivative(u, dy, axis=0)  # vorticity points
+    dudy = compute_derivative(u, dy, axis=0)  # vorticity points
     dudy = interpolate(dudy, axis=1)  # v points
 
     u_adv = interpolate(u_adv, axis=1)  # h points
@@ -203,10 +203,10 @@ def compute_advection_v(u: Union[np.ndarray, np.ma.MaskedArray], v: Union[np.nda
     u_adv = np.copy(u)
     v_adv = np.copy(v)
 
-    dvdx = _compute_derivative(v, dx, axis=1)  # vorticity points
+    dvdx = compute_derivative(v, dx, axis=1)  # vorticity points
     dvdx = interpolate(dvdx, axis=0)  # u points
 
-    dvdy = _compute_derivative(v, dy, axis=0)  # h points
+    dvdy = compute_derivative(v, dy, axis=0)  # h points
     dvdy = interpolate(dvdy, axis=1)  # u points
 
     v_adv = interpolate(v_adv, axis=1)  # vorticity points
