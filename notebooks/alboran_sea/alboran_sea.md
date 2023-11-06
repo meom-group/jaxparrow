@@ -9,55 +9,34 @@ Measurements are located on a C-grid.
 
 ```python
 data_dir = "data"
-name_mask = "mask_eNATL60MEDWEST_3.6.nc"
-name_coord = "coordinates_eNATL60MEDWEST.nc"
-name_ssh = "eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
-name_u = "eNATL60MEDWEST-BLB002_y2009m07d01.1h_sozocrtx.nc"
-name_v = "eNATL60MEDWEST-BLB002_y2009m07d01.1h_somecrty.nc"
-```
-
-The original simulation covers a large mediterranean area that we crop to the Alboran sea.
-
-```python
-min_lon = -5.5
-max_lon = -1
-min_lat = 35
-max_lat = 36.9
+name_mask = "mask_alboransea.nc"
+name_coord = "coordinates_alboransea.nc"
+name_ssh = "alboransea_sossheig.nc"
+name_u = "alboransea_sozocrtx.nc"
+name_v = "alboransea_somecrty.nc"
 ```
 
 ```python
 ds_coord = xr.open_dataset(os.path.join(data_dir, name_coord))
-
-# slicing requires coordinates with indexes
-# without indexes, we can use a mask on coordinates
-alboran_mask = np.logical_and(np.logical_and(ds_coord.nav_lon >= min_lon, ds_coord.nav_lon <= max_lon),
-                              np.logical_and(ds_coord.nav_lat >= min_lat, ds_coord.nav_lat <= max_lat))
-
-ds_coord = ds_coord.set_coords(["nav_lon", "nav_lat"])
-ds_coord = ds_coord.where(alboran_mask, drop=True)
 lon = ds_coord.nav_lon.values
 lat = ds_coord.nav_lat.values
 
-ds_mask = xr.open_dataset(os.path.join(data_dir, name_mask)).set_coords(["nav_lon", "nav_lat"])
-ds_mask = ds_mask.where(alboran_mask, drop=True)
+ds_mask = xr.open_dataset(os.path.join(data_dir, name_mask))
 mask_ssh = ds_mask.tmask[0,0].values
 mask_u = ds_mask.umask[0,0].values
 mask_v = ds_mask.vmask[0,0].values
 
-ds_ssh = xr.open_dataset(os.path.join(data_dir, name_ssh)).set_coords(["nav_lon", "nav_lat"])
-ds_ssh = ds_ssh.where(alboran_mask, drop=True)
+ds_ssh = xr.open_dataset(os.path.join(data_dir, name_ssh))
 lon_ssh = ds_ssh.nav_lon.values
 lat_ssh = ds_ssh.nav_lat.values
 ssh = ds_ssh.sossheig[0].values
 
-ds_u = xr.open_dataset(os.path.join(data_dir, name_u)).set_coords(["nav_lon", "nav_lat"])
-ds_u = ds_u.where(alboran_mask, drop=True)
+ds_u = xr.open_dataset(os.path.join(data_dir, name_u))
 lon_u = ds_u.nav_lon.values
 lat_u = ds_u.nav_lat.values
 uvel = ds_u.sozocrtx[0].values
 
-ds_v = xr.open_dataset(os.path.join(data_dir, name_v)).set_coords(["nav_lon", "nav_lat"])
-ds_v = ds_v.where(alboran_mask, drop=True)
+ds_v = xr.open_dataset(os.path.join(data_dir, name_v))
 lon_v = ds_v.nav_lon.values
 lat_v = ds_v.nav_lat.values
 vvel = ds_v.somecrty[0].values
