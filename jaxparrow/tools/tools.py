@@ -22,10 +22,10 @@ __all__ = ["compute_coriolis_factor", "compute_spatial_step"]
 def compute_coriolis_factor(lat: Union[int, np.ndarray, np.ma.MaskedArray]) -> Union[np.ndarray, np.ma.MaskedArray]:
     """Computes the Coriolis factor from latitudes
 
-    :param lat: latitude
+    :param lat: latitude, NxM grid
     :type lat: Union[np.ndarray, np.ma.MaskedArray]
 
-    :returns: Coriolis factor
+    :returns: Coriolis factor, NxM grid
     :rtype: Union[np.ndarray, np.ma.MaskedArray]
     """
     return 2 * EARTH_ANG_SPEED * np.sin(lat * np.pi / 180)
@@ -56,17 +56,18 @@ def compute_spatial_step(lat: Union[np.ndarray, np.ma.MaskedArray], lon: Union[n
     """Computes dx and dy spatial steps of a grid defined by lat, lon.
     It makes use of the distance-on-a-sphere formula with Taylor expansion approximations of cos and arccos functions
     to avoid truncation issues.
+    Applies Von Neuman boundary conditions to the spatial steps fields.
 
-    :param lat: latitude
+    :param lat: latitude, NxM grid
     :type lat: Union[np.ndarray, np.ma.MaskedArray]
-    :param lon: longitude
+    :param lon: longitude, NxM grid
     :type lon: Union[np.ndarray, np.ma.MaskedArray]
     :param bounds: range of acceptable values, defaults to (1e2, 1e4). Out of this range, set to fill_value
     :type bounds: Tuple[float, float], optional
     :param fill_value: fill value, defaults to 1e12
     :type fill_value: float, optional
 
-    :returns: dx and dy spatial steps
+    :returns: dx and dy spatial steps, NxM grids
     :rtype: Tuple[np.ndarray, np.ndarray]
     """
     dx, dy = np.zeros_like(lon), np.zeros_like(lon)

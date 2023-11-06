@@ -16,6 +16,6 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   description
-   notebooks
+   Overview <overview>
+   examples
    api

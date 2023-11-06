@@ -19,14 +19,14 @@ class TestVelocities:
     def test_cyclogeostrophy_penven(self):
         u_cyclo_est, v_cyclo_est = cyclogeostrophy(self.u_geos, self.v_geos, self.dXY, self.dXY,
                                                    self.dXY, self.dXY, self.coriolis_factor, self.coriolis_factor,
-                                                   method="penven")
+                                                   method="iterative")
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est, v_cyclo_est)  # around .003
         assert cyclo_rmse <= .01
 
     def test_cyclogeostrophy_ioannou(self):
         u_cyclo_est, v_cyclo_est = cyclogeostrophy(self.u_geos, self.v_geos, self.dXY, self.dXY,
                                                    self.dXY, self.dXY, self.coriolis_factor, self.coriolis_factor,
-                                                   method="ioannou")
+                                                   method="iterative", use_res_filter=True)
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est, v_cyclo_est)  # around .003
         assert cyclo_rmse <= .01
 
