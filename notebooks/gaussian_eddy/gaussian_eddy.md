@@ -217,7 +217,7 @@ $$\mathbf{u}^{(n+1)} = \mathbf{u_g} + \frac{\mathbf{k}}{f} \times (\mathbf{u}^{(
 Use of a convolution filter when computing the residuals.
 
 ```python
-u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, method="ioannou")
+u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, method="iterative", use_res_filter=True)
 azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
 ```
 
@@ -262,7 +262,7 @@ ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
 No convolution filter, original approach.
 
 ```python
-u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, method="penven")
+u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, method="iterative")
 azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
 ```
 

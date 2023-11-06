@@ -219,10 +219,10 @@ plt.colorbar(im, ax=ax2)
     
 ### Penven method
 
-We use the same function, but with the argument `method="penven"`.
+We use the same function, but with the argument `method="iterative"`.
 
 ```python
-u_penven, v_penven = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="penven")
+u_penven, v_penven = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative")
 ```
 
     100%|██████████| 100/100 [00:00<00:00, 213.83it/s]
@@ -264,10 +264,10 @@ plt.colorbar(im, ax=ax2)
     
 ### Ioannou method
 
-We use the same function, but with the argument `method="ioannou"`. 
+We use the same function, but with the arguments `method="iterative"`, and `use_res_filter=True`. 
 
 ```python
-u_ioannou, v_ioannou = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="ioannou")
+u_ioannou, v_ioannou = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative", use_res_filter=True)
 ```
 
     100%|██████████| 100/100 [00:00<00:00, 112.78it/s]
