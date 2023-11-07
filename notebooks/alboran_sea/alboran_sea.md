@@ -9,7 +9,7 @@ import numpy as np
 import numpy.ma as ma
 import xarray as xr
 
-from jaxparrow.tools import compute_coriolis_factor, compute_derivative, compute_spatial_step
+from jaxparrow.tools import compute_coriolis_factor, compute_spatial_step
 from jaxparrow import cyclogeostrophy, geostrophy
 ```
 
@@ -22,6 +22,7 @@ def dist(true: np.ndarray, estimate: np.ndarray) -> np.ndarray:
     return true - estimate
 
 
+from jaxparrow.tools.tools import compute_derivative
 def compute_norm_vorticity(u: np.ndarray, v: np.ndarray, dy_u: np.ndarray, dx_v: np.ndarray, 
                            mask: np.ndarray, f: np.ndarray) -> np.ma.masked_array:
     du_dy = compute_derivative(u, dy_u, axis=0)

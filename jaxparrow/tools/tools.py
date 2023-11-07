@@ -12,7 +12,7 @@ EARTH_RADIUS = 6370e3
 GRAVITY = 9.81
 P0 = np.pi / 180
 
-__all__ = ["compute_coriolis_factor", "compute_derivative", "compute_spatial_step"]
+__all__ = ["compute_coriolis_factor", "compute_spatial_step"]
 
 
 # =============================================================================
