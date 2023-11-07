@@ -42,3 +42,8 @@ html_theme = "alabaster"
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 ]
+html_theme_options = {
+    "description": "A JAX implementation of the cyclogeostrophic balance inversion",
+    "github_user": "meom-group",
+    "github_repo": "jaxparrow",
+}
