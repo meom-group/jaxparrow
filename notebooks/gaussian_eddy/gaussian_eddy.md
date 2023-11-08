@@ -185,8 +185,6 @@ u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, c
 azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
 ```
 
-    100%|██████████| 2000/2000 [00:04<00:00, 480.53it/s]
-
 ```python
 vmax = np.max([azim_cyclo, azim_cyclo_est])
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
@@ -234,8 +232,6 @@ u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, c
 azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
 ```
 
-      4%|▍         | 4/100 [00:00<00:00, 713.89it/s]
-
 ```python
 vmax = np.max([azim_cyclo, azim_cyclo_est])
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
@@ -278,8 +274,6 @@ No convolution filter, original approach.
 u_cyclo_est, v_cyclo_est = cyclogeostrophy(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, method="iterative")
 azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
 ```
-
-      4%|▍         | 4/100 [00:00<00:00, 1861.45it/s]
 
 ```python
 vmax = np.max([azim_cyclo, azim_cyclo_est])

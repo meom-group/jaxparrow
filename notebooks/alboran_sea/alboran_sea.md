@@ -33,9 +33,17 @@ def compute_norm_vorticity(u: np.ndarray, v: np.ndarray, dy_u: np.ndarray, dx_v:
 ## Input data
 
 In this example, we use NEMO model outputs (SSH and velocities), stored in several netCDF files.
-Data can be downloaded [here](https://1drv.ms/f/s!Aq7KsFIdmDGepjMT6o77ko-JRRZu?e=hpxeKa), and the files stored inside the `data` folder.
-
 Measurements are located on a C-grid.
+
+Data can be downloaded [here](https://ige-meom-opendap.univ-grenoble-alpes.fr/thredds/fileServer/meomopendap/extract/MEOM/jaxparrow/alboransea.tar.gz), and the files extracted to the `data` folder.
+The next cell does this for you, assuming wget and tar are available. 
+
+
+```python
+!wget -P data https://ige-meom-opendap.univ-grenoble-alpes.fr/thredds/fileServer/meomopendap/extract/MEOM/jaxparrow/alboransea.tar.gz
+!tar -xzf data/alboransea.tar.gz -C data
+!rm data/alboransea.tar.gz
+```
 
 
 ```python
@@ -146,7 +154,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_14_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_15_0.png?raw=true)
     
 
 
@@ -218,25 +226,20 @@ plt.colorbar(im, ax=ax2)
 
 
 
-    <matplotlib.colorbar.Colorbar at 0x147915af0>
-
-
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_3.png?raw=true)
     
 
 
@@ -250,8 +253,6 @@ Cyclogeostrophic velocities are computed via the `cyclogeostrophy` function, usi
 ```python
 u_var, v_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v)
 ```
-
-    100%|██████████| 2000/2000 [00:03<00:00, 528.08it/s]
 
 
 
@@ -309,25 +310,20 @@ plt.colorbar(im, ax=ax2)
 
 
 
-    <matplotlib.colorbar.Colorbar at 0x141d70c10>
-
-
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_3.png?raw=true)
     
 
 
@@ -339,8 +335,6 @@ We use the same function, but with the argument `method="iterative"`.
 ```python
 u_penven, v_penven = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative")
 ```
-
-    100%|██████████| 100/100 [00:00<00:00, 431.61it/s]
 
 
 
@@ -398,25 +392,20 @@ plt.colorbar(im, ax=ax2)
 
 
 
-    <matplotlib.colorbar.Colorbar at 0x16a0ac220>
-
-
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_3.png?raw=true)
     
 
 
@@ -428,8 +417,6 @@ We use the same function, but with the arguments `method="iterative"`, and `use_
 ```python
 u_ioannou, v_ioannou = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative", use_res_filter=True)
 ```
-
-    100%|██████████| 100/100 [00:00<00:00, 343.00it/s]
 
 
 
@@ -487,25 +474,20 @@ plt.colorbar(im, ax=ax2)
 
 
 
-    <matplotlib.colorbar.Colorbar at 0x16a7a5fa0>
-
-
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_3.png?raw=true)
     
 
 
@@ -556,24 +538,19 @@ plt.colorbar(im, ax=ax2)
 
 
 
-    <matplotlib.colorbar.Colorbar at 0x295ae7ee0>
-
-
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_3.png?raw=true)
     
 
