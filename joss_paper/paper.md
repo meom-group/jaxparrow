@@ -1,26 +1,33 @@
 ---
 title: 'Variational Formulation for Inversion of Cyclogeostrophic Balance using JAX: A Case Study in Oceanography'
 tags:
-  - oceanography
-  - cyclogeostrophic balance
-  - variational formulation
-  - satellite altimetry
-  - circulation modeling.
-  - Python
-authors:
-  - name: Emmanuel COSME
-    equal-contrib: true
-    affiliation: 1
-  - name: Victor E V Z DE ALMEIDA
-    equal-contrib: true
-    affiliation: 1
-affiliations:
- - name: Univsersité Grenoble Alpes, France
-   index: 1
-date: 10 july 2023
-bibliography: paper.bib
----
 
+- oceanography
+- cyclogeostrophic balance
+- variational formulation
+- satellite altimetry
+- circulation modeling
+- Python
+- JAX
+  authors:
+- name: Victor E V Z DE ALMEIDA
+  equal-contrib: true
+  affiliation: 1
+- name: Vadim BERTRAND
+  equal-contrib: true
+  affiliation: 1
+- name: Julien LE SOMMER
+  equal-contrib: true
+  affiliation: 1
+- name: Emmanuel COSME
+  equal-contrib: true
+  affiliation: 1
+  affiliations:
+- name: Univsersité Grenoble Alpes, France
+  index: 1
+  date: 10 july 2023
+  bibliography: paper.bib
+---
 # Summary
 
 In the field of oceanography, understanding the complex dynamics of ocean currents is crucial for accurate modeling and prediction of oceanic phenomena. The cyclogeostrophic balance, which relates the pressure gradient and the Coriolis force, plays a significant role in determining the behavior of oceanic circulation patterns. In this study, we present a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
@@ -37,10 +44,13 @@ Understanding the dynamics of oceanic circulation is crucial for a wide range of
 
 To analyze and interpret altimetry data, the formulation known as geostrophy is used. Geostrophy is a fundamental concept in fluid dynamics, as it describes the balance between the pressure gradient force and the Coriolis force, which arises from the rotation of the Earth. This balance can be derived from the primitive equations of Navier-Stokes, which leads to a velocity field in the ocean known as geostrophic velocities, used to estimate ocean currents (\autoref{eq:geostrophic_balance}).
 
-\begin{equation}
-    \label{eq:geostrophic_balance}
-    f\left(\vec{k} \times \vec{u_g}\right) = -g \nabla \eta,
-\end{equation}
+[
+
+$$
+f \left(\vec{k} \times \vec{u}_g \right) = -g \nabla \eta,
+$$
+
+]{label="eq:geostrophic_balance"}
 
 where:
 
@@ -56,17 +66,23 @@ However, as discussed by `@Cao:2023` geostrophy alone is not always sufficient t
 
 Considering a horizontal, stationary, and inviscid flow, the momentum equation linking the horizontal surface flow ($\vec{u}$) with SSH can be expressed as:
 
-\begin{equation}
-    \label{eq:cyclogeostrophic_balance}
-    \vec{u} \cdot \nabla \vec{u} + f\left(\vec{k} \times \vec{u}\right) = -g \nabla \eta
-\end{equation}
+[
+
+$$
+\vec{u} \cdot \nabla \vec{u} + f \left(\vec{k} \times \vec{u}\right) = -g \nabla \eta
+$$
+
+]{label="eq:cyclogeostrophic_balance"}
 
 By introducing the geostrophic velocity ($\vec{u_g}$) from \autoref{eq:geostrophic_balance}, into \autoref{eq:cyclogeostrophic_balance}, the expression can be written in the following form:
 
-\begin{equation}
-    \label{eq:cyclogeostrophic_balance_ug}
-    \vec{u_c} - \frac{\vec{k}}{f} \times \left(\vec{u_c} \cdot \nabla \vec{u_c}\right) = \vec{u_g},
-\end{equation}
+[
+
+$$
+\vec{u}_c - \frac{\vec{k}}{f} \times \left(\vec{u}_c \cdot \nabla \vec{u}_c \right) = \vec{u}_g,
+$$
+
+]{label="eq:cyclogeostrophic_balance_ug"}
 
 where:
 
@@ -78,56 +94,57 @@ The current state-of-the-art method to solve the cyclogeostrophic equations is k
 
 The iterative scheme used to estimate the cyclogeostrophic approximation is given by:
 
-\begin{equation}
-    \label{eq:iterative_method}
-    \vec{u^{n+1}} = \vec{u_g} + \frac{\Vec{k}}{f} \times \left( \vec{u^n} \cdot \nabla \vec{u^n} \right).
-\end{equation}
+[
+
+$$
+\vec{u}_c^{(n+1)} = \vec{u}_g + \frac{\vec{k}}{f} \times \left( \vec{u}_c^{(n)} \cdot \nabla \vec{u}_c^{(n)} \right)
+$$
+
+]{label="eq:iterative_method"}
 
 The equation stated above was used by `@Penven:2014` to study oceanic eddies in the Mozambique channel, and it is also known to diverge. Consequently, a scalar residual function was defined as $res = \left\lVert \vec{u_{n+1}} - \vec{u_n} \right\rVert^2$ to control the iteration process; more precisely, the iteration stops when the residual variable is below 0.01 m/s or it starts to increase.
 
 Hence, this paper describes a software that implements a new approach to solve the cyclogeostrophic inversion problem based on the minimization of a variational formulation, which can be written as:
 
-\begin{equation}
-    \label{eq:loss_function}
-    J = \int_{\Omega} \left\lVert \vec{u} - \frac{\vec{k}}{f} \times \left(\vec{u} \cdot \nabla \vec{u}\right) - \vec{u_g} \right\rVert^2 d \Omega,
-\end{equation}
+[
+
+$$
+J(\vec{u}_c) = \int_{\Omega} \left\lVert \vec{u_c} - \frac{\vec{k}}{f} \times \left(\vec{u_c} \cdot \nabla \vec{u_c}\right) - \vec{u_g} \right\rVert^2 d \Omega,
+$$
+
+]{label="eq:loss_function"}
 
 where:
 
 - J: variational formulation chosen for the problem;
 - $\Omega$: volume control.
 
-For a discrete medium and a two-dimensional velocity field, \autoref{loss_function} can be expanded as:
+For a discrete medium and a two-dimensional velocity field, \autoref{eq:loss_function} can be reformulated as:
 
-\begin{equation}
-    \label{eq:loss_function_expanded}
-    J = \int_{S} \left( u + \displaystyle \frac{1}{f} \left(\vec{u} \cdot \nabla v \right) - u_g \right)^2 + \left(v - \displaystyle \frac{1}{f} \left(\vec{u} \cdot \nabla u \right) - v_g \right)^2 dS
-\end{equation}
+[
 
-The cyclogeostrophic currents are obtained by minimizing the variational formulation with a gradient descent method (\autoref{eq:Gradient_descent}). The software is written in Python and uses the JAX library, developed by Google for high-performance numerical computing and machine learning, to avoid the hand coding of the variational formulation's gradient and improve computational performance.
+$$
+J(\vec{u}_c) = \sum_{i=1}^N \sum_{j=1}^M\left( u_{c_{ij}} + \displaystyle \frac{1}{f} \left(\vec{u}_{c_{ij}} \cdot \nabla v_{c_{ij}} \right) - u_{g_{ij}} \right)^2 + \left(v_{c_{ij}} - \displaystyle \frac{1}{f} \left(\vec{u}_{c_{ij}} \cdot \nabla u_{c_{ij}} \right) - v_{g_{ij}} \right)^2
+$$
 
-\begin{equation}
-    \label{eq:Gradient_descent}
-    \theta = \theta - \alpha . \nabla J(\theta),
-\end{equation}
+]{label="eq:loss_function_expanded"}
+
+The cyclogeostrophic currents are obtained by minimizing the variational formulation with a gradient descent method (\autoref{eq:gradient_descent}). The software is written in Python and uses the JAX library, developed by Google for high-performance numerical computing and machine learning, to avoid the hand coding of the variational formulation's gradient and improve computational performance.
+
+[
+
+$$
+\vec{u}_c^{(n+1)} = \vec{u}_c^{(n)} - \alpha \nabla J(\vec{u}_c^{(n)}),
+$$
+
+]{label="eq:gradient_descent"}
 
 where:
 
-* $\theta$: parameter vector being optimized;
 * $\alpha$: learning rate, which determines how big the steps taken in each iteration are;
-* $\nabla J(\theta)$: gradient of the function being minimized with respect to $\theta$.
+* $\vec{u}_c^{(0)} = \vec{u}_g$: initial cyclogeostrophic velocity field.
 
-In the case of this study, the loss function $J$ will depend on two variables, u and v; therefore, \autoref{eq:Gradient_descent} is expressed as:
-
-\begin{equation}
-    \label{Gradient_descent_cyclo}
-    \begin{cases}
-        u = u - \alpha . \nabla_x J(u,v),\\
-        v = v - \alpha . \nabla_y J(u,v)
-    \end{cases}
-\end{equation}
-
-# Exemple of use
+# Example of use
 
 In this section, we will demonstrate an example of using the software with data from the eNATL60 configuration of the NEMO ocean circulation model, specifically in the Mediterranean Sea. The data used in this example is available in the [cyclogeostrophic balance repository](https://github.com/VictorZaia/cyclogeostrophic_balance).
 
@@ -158,3 +175,8 @@ Overall, the tests indicated that the inversion code was accurate, efficient, an
 # Acknowledgements
 
 # References
+
+$$
+
+
+$$
