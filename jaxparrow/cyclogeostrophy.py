@@ -7,6 +7,7 @@ import jax
 from jax import grad, jit
 import jax.numpy as jnp
 import numpy as np
+import optax
 from scipy import signal
 from tqdm import tqdm
 
@@ -203,8 +204,9 @@ def _iterative(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v: n
 # =============================================================================
 
 @partial(jit, static_argnums=(0, 3))
-def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_cyclo: jax.Array, lr: float) \
-        -> Tuple[jax.Array, jax.Array]:
+def _step(f: Callable[[Tuple[jax.Array, jax.Array]], jax.Array], u_cyclo: jax.Array, v_cyclo: jax.Array,
+          optim: optax.GradientTransformation, opt_state: optax.OptState) \
+        -> Tuple[jax.Array, jax.Array, optax.OptState]:
     """Executes one iteration of the variational approach, using gradient descent
 
     :param f: loss function
@@ -219,16 +221,14 @@ def _step(f: Callable[[jax.Array, jax.Array], jax.Array], u_cyclo: jax.Array, v_
     :returns: updated U and V cyclogeostrophic velocities
     :rtype: Tuple[jax.Array, jax.Array]
     """
-    grad_u = grad(f)
-    grad_v = grad(f, argnums=1)
-
-    u_n = u_cyclo - lr * jnp.nan_to_num(grad_u(u_cyclo, v_cyclo), nan=0, posinf=0, neginf=0)
-    v_n = v_cyclo - lr * jnp.nan_to_num(grad_v(u_cyclo, v_cyclo), nan=0, posinf=0, neginf=0)
-
-    return u_n, v_n
+    params = (u_cyclo, v_cyclo)
+    grads = grad(f)(params)
+    updates, opt_state = optim.update(grads, opt_state, params)
+    u_n, v_n = optax.apply_updates(params, updates)
+    return u_n, v_n, opt_state
 
 
-def _gradient_descent(u_geos: np.ndarray, v_geos: np.ndarray, f: Callable[[jax.Array, jax.Array], jax.Array],
+def _gradient_descent(u_geos: np.ndarray, v_geos: np.ndarray, f: Callable[[Tuple[jax.Array, jax.Array]], jax.Array],
                       n_it: int, lr: float) -> Tuple[np.ndarray, np.ndarray]:
     """Performs the gradient descent
 
@@ -244,9 +244,11 @@ def _gradient_descent(u_geos: np.ndarray, v_geos: np.ndarray, f: Callable[[jax.A
     :type lr: float, optional
     """
     u_cyclo, v_cyclo = jnp.copy(u_geos), jnp.copy(v_geos)
+    optim = optax.sgd(learning_rate=lr)
+    opt_state = optim.init((u_cyclo, v_cyclo))
     for _ in tqdm(range(n_it)):
         # update x and y using gradient descent
-        u_cyclo, v_cyclo = _step(f, u_cyclo, v_cyclo, lr)
+        u_cyclo, v_cyclo, opt_state = _step(f, u_cyclo, v_cyclo, optim, opt_state)
     return np.copy(u_cyclo), np.copy(v_cyclo)
 
 
@@ -282,7 +284,8 @@ def _variational(u_geos: np.ndarray, v_geos: np.ndarray, dx_u: np.ndarray, dx_v:
     if n_it is None:
         n_it = N_IT_VAR
 
-    def f(u: jax.Array, v: jax.Array) -> jax.Array:
+    def f(uv: Tuple[jax.Array, jax.Array]) -> jax.Array:
+        u, v = uv
         return tools.compute_cyclogeostrophic_diff_jax(u_geos, v_geos, u, v, dx_u, dx_v, dy_u, dy_v,
                                                        coriolis_factor_u, coriolis_factor_v)
 

@@ -27,7 +27,8 @@ dependencies = [
     "tqdm",
     "xarray",
     "jax",
-    "jaxlib"
+    "jaxlib",
+    "optax"
 ]
 dynamic = ["version"]
 
