@@ -1,5 +1,3 @@
-# Alboran sea
-
 ```python
 import os
 
@@ -7,11 +5,16 @@ import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.ma as ma
+import optax
 import xarray as xr
 
 from jaxparrow.tools import compute_coriolis_factor, compute_spatial_step
 from jaxparrow import cyclogeostrophy, geostrophy
+
+%reload_ext autoreload
+%autoreload 2
 ```
+
 
 ```python
 # utility functions
@@ -30,13 +33,15 @@ def compute_norm_vorticity(u: np.ndarray, v: np.ndarray, dy_u: np.ndarray, dx_v:
     return ma.masked_array(dv_dx - du_dy, mask) / f
 ```
 
+# Alboran sea
+
 ## Input data
 
 In this example, we use NEMO model outputs (SSH and velocities), stored in several netCDF files.
 Measurements are located on a C-grid.
 
 Data can be downloaded [here](https://ige-meom-opendap.univ-grenoble-alpes.fr/thredds/fileServer/meomopendap/extract/MEOM/jaxparrow/alboransea.tar.gz), and the files extracted to the `data` folder.
-The next cell does this for you, assuming wget and tar are available. 
+The next cell does this for you, assuming wget and tar are available.
 
 
 ```python
@@ -44,6 +49,8 @@ The next cell does this for you, assuming wget and tar are available.
 !tar -xzf data/alboransea.tar.gz -C data
 !rm data/alboransea.tar.gz
 ```
+    
+
 
 
 ```python
@@ -210,10 +217,10 @@ im = ax2.pcolormesh(lon, lat, norm_vorticity_geos, cmap="RdBu_r", shading="auto"
 plt.colorbar(im, ax=ax2)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - (NEMO - geos)")
+ax1.set_title("normalized vorticities difference - (NEMO - geos)")
 ax1.set_xlabel("longitude")
 ax2.set_xlabel("longitude")
-ax2.set_title("normalized vorticity - (NEMO - geos) - clipped")
+ax2.set_title("normalized vorticities difference - (NEMO - geos) - clipped")
 ax1.set_ylabel("latitude")
 im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_geos), cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
@@ -222,7 +229,6 @@ im = ax2.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_geos),
                     cmap="RdBu_r", shading="auto", norm=colors.CenteredNorm(halfrange=halfrange))
 plt.colorbar(im, ax=ax2)
 ```
-
 
 
 
@@ -249,10 +255,38 @@ plt.colorbar(im, ax=ax2)
 
 Cyclogeostrophic velocities are computed via the `cyclogeostrophy` function, using geostrophic velocities (here, the ones we previously computed), spatial steps, and the coriolis factors.
 
+The optimizer can be specified as a string (assuming it refers to an `optax` [common optimizers](https://optax.readthedocs.io/en/latest/api.html#)): `optim = "sgd"` for example.
+Or designed using a more refined strategy:
+
 
 ```python
-u_var, v_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v)
+lr_scheduler = optax.exponential_decay(1e-2, 200, .5)
+base_optim = optax.sgd(learning_rate=lr_scheduler)
+optim = optax.chain(optax.clip(1), base_optim)
 ```
+
+
+```python
+u_var, v_var, losses = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, n_it=1000, optim=optim, return_losses=True)
+```
+
+    100%|██████████| 1000/1000 [00:01<00:00, 636.12it/s] 
+
+
+
+```python
+plt.plot(losses)
+plt.title("cyclogeostrophic disequilibrium - variational")
+plt.xlabel("steps")
+plt.ylabel("disequilibrium")
+plt.show()
+
+```
+
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_0.png?raw=true)
+    
 
 
 
@@ -294,10 +328,10 @@ im = ax2.pcolormesh(lon, lat, norm_vorticity_var, cmap="RdBu_r", shading="auto",
 plt.colorbar(im, ax=ax2)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - (NEMO - var)")
+ax1.set_title("normalized vorticities difference - (NEMO - var)")
 ax1.set_xlabel("longitude")
 ax2.set_xlabel("longitude")
-ax2.set_title("normalized vorticity - (NEMO - var) - clipped")
+ax2.set_title("normalized vorticities difference - (NEMO - var) - clipped")
 ax1.set_ylabel("latitude")
 im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_var), cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
@@ -309,56 +343,73 @@ plt.colorbar(im, ax=ax2)
 
 
 
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_1.png?raw=true)
-    
-
-
-
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_28_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_26_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_28_2.png?raw=true)
     
 
 
-### Penven method
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_28_3.png?raw=true)
+    
+
+
+### Iterative method
 
 We use the same function, but with the argument `method="iterative"`. 
 
 
 ```python
-u_penven, v_penven = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative")
+u_iterative, v_iterative, losses = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative", return_losses=True)
 ```
+
+     20%|██        | 20/100 [00:00<00:00, 653.72it/s]
 
 
 
 ```python
-u_penven = ma.masked_array(u_penven, mask_u)
-v_penven = ma.masked_array(v_penven, mask_v)
+plt.plot(losses)
+plt.title("cyclogeostrophic disequilibrium - iterative")
+plt.xlabel("steps")
+plt.ylabel("disequilibrium")
+plt.show()
+
+```
+
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_0.png?raw=true)
+    
+
+
+
+```python
+u_iterative = ma.masked_array(u_iterative, mask_u)
+v_iterative = ma.masked_array(v_iterative, mask_v)
 ```
 
 #### Comparison to NEMO's velocities
 
 
 ```python
-norm_vorticity_penven = compute_norm_vorticity(u_penven, v_penven, dy_u, dx_v, mask_ssh, coriolis_factor)
+norm_vorticity_iterative = compute_norm_vorticity(u_iterative, v_iterative, dy_u, dx_v, mask_ssh, coriolis_factor)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
 ax1.set_title("normalized vorticity - NEMO")
 ax1.set_xlabel("longitude")
 ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - penven")
+ax2.set_title("normalized vorticity - iterative")
 ax2.set_xlabel("longitude")
 im = ax1.pcolormesh(lon, lat, norm_vorticity, cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_penven, cmap="RdBu_r", shading="auto",
+im = ax2.pcolormesh(lon, lat, norm_vorticity_iterative, cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax2)
 
@@ -366,81 +417,97 @@ _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
 ax1.set_title("normalized vorticity - NEMO - clipped")
 ax1.set_xlabel("longitude")
 ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - penven - clipped")
+ax2.set_title("normalized vorticity - iterative - clipped")
 ax2.set_xlabel("longitude")
 im = ax1.pcolormesh(lon, lat, norm_vorticity, cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax)
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_penven, cmap="RdBu_r", shading="auto", 
+im = ax2.pcolormesh(lon, lat, norm_vorticity_iterative, cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax)
 plt.colorbar(im, ax=ax2)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - (NEMO - penven)")
+ax1.set_title("normalized vorticities difference - (NEMO - iterative)")
 ax1.set_xlabel("longitude")
 ax2.set_xlabel("longitude")
-ax2.set_title("normalized vorticity - (NEMO - penven) - clipped")
+ax2.set_title("normalized vorticities difference - (NEMO - iterative) - clipped")
 ax1.set_ylabel("latitude")
-im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_penven), cmap="RdBu_r", shading="auto",
+im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_iterative), cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_penven), 
+im = ax2.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_iterative), 
                     cmap="RdBu_r", shading="auto", norm=colors.CenteredNorm(halfrange=halfrange))
 plt.colorbar(im, ax=ax2)
 ```
 
 
 
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_1.png?raw=true)
-    
-
-
-
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_34_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_34_2.png?raw=true)
     
 
 
-### Ioannou method
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_34_3.png?raw=true)
+    
+
+
+### Iterative method, with filter
 
 We use the same function, but with the arguments `method="iterative"`, and `use_res_filter=True`. 
 
 
 ```python
-u_ioannou, v_ioannou = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative", use_res_filter=True)
+u_it_filter, v_it_filter, losses = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, method="iterative", use_res_filter=True, return_losses=True)
 ```
+
+    100%|██████████| 100/100 [00:00<00:00, 546.62it/s]
 
 
 
 ```python
-u_ioannou = ma.masked_array(u_ioannou, mask_u)
-v_ioannou = ma.masked_array(v_ioannou, mask_v)
+plt.plot(losses)
+plt.title("cyclogeostrophic disequilibrium - it_filter")
+plt.xlabel("steps")
+plt.ylabel("disequilibrium")
+plt.show()
+```
+
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_37_0.png?raw=true)
+    
+
+
+
+```python
+u_it_filter = ma.masked_array(u_it_filter, mask_u)
+v_it_filter = ma.masked_array(v_it_filter, mask_v)
 ```
 
 #### Comparison to NEMO's currents
 
 
 ```python
-norm_vorticity_ioannou = compute_norm_vorticity(u_ioannou, v_ioannou, dy_u, dx_v, mask_ssh, coriolis_factor)
+norm_vorticity_it_filter = compute_norm_vorticity(u_it_filter, v_it_filter, dy_u, dx_v, mask_ssh, coriolis_factor)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
 ax1.set_title("normalized vorticity - NEMO")
 ax1.set_xlabel("longitude")
 ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - ioannou")
+ax2.set_title("normalized vorticity - it_filter")
 ax2.set_xlabel("longitude")
 im = ax1.pcolormesh(lon, lat, norm_vorticity, cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_ioannou, cmap="RdBu_r", shading="auto",
+im = ax2.pcolormesh(lon, lat, norm_vorticity_it_filter, cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax2)
 
@@ -448,109 +515,43 @@ _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
 ax1.set_title("normalized vorticity - NEMO - clipped")
 ax1.set_xlabel("longitude")
 ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - ioannou - clipped")
+ax2.set_title("normalized vorticity - it_filter - clipped")
 ax2.set_xlabel("longitude")
 im = ax1.pcolormesh(lon, lat, norm_vorticity, cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax)
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_ioannou, cmap="RdBu_r", shading="auto", 
+im = ax2.pcolormesh(lon, lat, norm_vorticity_it_filter, cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax)
 plt.colorbar(im, ax=ax2)
 
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - (NEMO - ioannou)")
+ax1.set_title("normalized vorticities difference - (NEMO - it_filter)")
 ax1.set_xlabel("longitude")
 ax2.set_xlabel("longitude")
-ax2.set_title("normalized vorticity - (NEMO - ioannou) - clipped")
+ax2.set_title("normalized vorticities difference - (NEMO - it_filter) - clipped")
 ax1.set_ylabel("latitude")
-im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_ioannou), cmap="RdBu_r", shading="auto",
+im = ax1.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_it_filter), cmap="RdBu_r", shading="auto",
                     norm=colors.CenteredNorm())
 plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_ioannou), 
+im = ax2.pcolormesh(lon, lat, dist(norm_vorticity, norm_vorticity_it_filter), 
                     cmap="RdBu_r", shading="auto", norm=colors.CenteredNorm(halfrange=halfrange))
 plt.colorbar(im, ax=ax2)
 ```
 
 
-
-
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_1.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_40_1.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_2.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_40_2.png?raw=true)
     
 
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_36_3.png?raw=true)
-    
-
-
-#### Comparison to Penven velocities
-
-
-```python
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - penven")
-ax1.set_xlabel("longitude")
-ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - ioannou")
-ax2.set_xlabel("longitude")
-im = ax1.pcolormesh(lon, lat, norm_vorticity_penven, cmap="RdBu_r", shading="auto",
-                    norm=colors.CenteredNorm())
-plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_ioannou, cmap="RdBu_r", shading="auto",
-                    norm=colors.CenteredNorm())
-plt.colorbar(im, ax=ax2)
-
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - penven - clipped")
-ax1.set_xlabel("longitude")
-ax1.set_ylabel("latitude")
-ax2.set_title("normalized vorticity - ioannou - clipped")
-ax2.set_xlabel("longitude")
-im = ax1.pcolormesh(lon, lat, norm_vorticity_penven, cmap="RdBu_r", shading="auto", 
-                    vmin=vmin, vmax=vmax)
-plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, norm_vorticity_ioannou, cmap="RdBu_r", shading="auto", 
-                    vmin=vmin, vmax=vmax)
-plt.colorbar(im, ax=ax2)
-
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5))
-ax1.set_title("normalized vorticity - (penven - ioannou)")
-ax1.set_xlabel("longitude")
-ax2.set_xlabel("longitude")
-ax2.set_title("normalized vorticity - (penven - ioannou) - clipped")
-ax1.set_ylabel("latitude")
-im = ax1.pcolormesh(lon, lat, dist(norm_vorticity_penven, norm_vorticity_ioannou), cmap="RdBu_r", shading="auto",
-                    norm=colors.CenteredNorm())
-plt.colorbar(im, ax=ax1)
-im = ax2.pcolormesh(lon, lat, dist(norm_vorticity_penven, norm_vorticity_ioannou), 
-                    cmap="RdBu_r", shading="auto", norm=colors.CenteredNorm(halfrange=halfrange))
-plt.colorbar(im, ax=ax2)
-```
-
-
-
-
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_1.png?raw=true)
-    
-
-
-
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_2.png?raw=true)
-    
-
-
-
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_38_3.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_40_3.png?raw=true)
     
 
