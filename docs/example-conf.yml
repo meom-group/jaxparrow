@@ -92,4 +92,7 @@ mask_v:
 
 cyclogeostrophy:
   method: "variational"
-  n_it: 100
+  n_it: 1000
+  optim: "sgd"
+  optim_kwargs:
+    learning_rate: 1e-3
