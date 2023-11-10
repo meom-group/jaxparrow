@@ -11,38 +11,38 @@
 
 # longitude grid of the SSH
 lon_ssh:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "nav_lon"
 
 # latitude grid of the SSH
 lat_ssh:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "nav_lat"
 
 # SSH grid
 ssh:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sossheig.nc"
+  file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "sossheig"
   index: [0]
 
 # longitude grid of the U component
 lon_u:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sozocrtx.nc"
+  file_path: "notebooks/data/alboransea_sozocrtx.nc"
   var_name: "nav_lon"
 
 # latitude grid of the U component
 lat_u:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_sozocrtx.nc"
+  file_path: "notebooks/data/alboransea_sozocrtx.nc"
   var_name: "nav_lat"
 
 # longitude grid of the V component
 lon_v:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_somecrty.nc"
+  file_path: "notebooks/data/alboransea_somecrty.nc"
   var_name: "nav_lon"
 
 # latitude grid of the V component
 lat_v:
-  file_path: "notebooks/data/eNATL60MEDWEST-BLB002_y2009m07d01.1h_somecrty.nc"
+  file_path: "notebooks/data/alboransea_somecrty.nc"
   var_name: "nav_lat"
 
 # ------------------------
@@ -66,19 +66,19 @@ out_path: "notebooks/data/out.nc"
 
 # mask of the SSH
 mask_ssh:
-  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  file_path: "notebooks/data/mask_alboransea.nc"
   var_name: "tmask"
   index: [0, 0]  # here we select the first time and elevation elements (optional, depends on the datastructure)
 
 # mask of the U component
 mask_u:
-  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  file_path: "notebooks/data/mask_alboransea.nc"
   var_name: "umask"
   index: [0, 0]
 
 # mask of the V component
 mask_v:
-  file_path: "notebooks/data/mask_eNATL60MEDWEST_3.6.nc"
+  file_path: "notebooks/data/mask_alboransea.nc"
   var_name: "vmask"
   index: [0, 0]
 
@@ -95,4 +95,4 @@ cyclogeostrophy:
   n_it: 1000
   optim: "sgd"
   optim_kwargs:
-    learning_rate: 1e-3
+    learning_rate: 0.001
