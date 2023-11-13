@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 from typing import Union
 import yaml
 
@@ -6,6 +7,7 @@ import numpy as np
 import numpy.ma as ma
 import xarray as xr
 
+from .version import __version__
 from .tools import compute_coriolis_factor, compute_spatial_step
 from .cyclogeostrophy import cyclogeostrophy
 from .geostrophy import geostrophy
@@ -44,7 +46,9 @@ def _read_data(conf_path: str) -> list:
 
     # in addition, the user can provide arguments passed to the cyclogeostrophic method
     values.append(conf.get("cyclogeostrophy", {}))
-    # and he must provide the full path (including its name and extension) of the output file
+    # and, optionally tune the output netCFD metadata attributes
+    values.append(conf.get("out_attrs", {}))
+    # finally, he must provide the full path (including its name and extension) of the output file
     values.append(conf["out_path"])
 
     return values
@@ -89,9 +93,29 @@ def _compute_coriolis_factor(lat_u: ma.MaskedArray, lat_v: ma.MaskedArray) -> tu
     return coriolis_factor_u, coriolis_factor_v
 
 
+def _create_attrs(conf_path: str, out_attrs: dict, run_datetime: str) -> dict:
+    with open(conf_path) as f:
+        raw_conf = f.read()
+
+    attrs = {
+        "Conventions": "CF-1.10",
+        "title": "ocean geostrophic and cyclogeostrophic currents",
+        "institution": "",
+        "source": "jaxparrow package - v" + __version__,
+        "history": run_datetime + ": jaxparrow --conf_file " + conf_path,
+        "references": "https://jaxparrow.readthedocs.io/",
+        "comment": "jaxparrow computes the inversion of the cyclogeostrophic balance based on a variational formulation"
+                   " approach, using JAX. ",
+        "conf_content": raw_conf
+    }
+    attrs.update(out_attrs)
+
+    return attrs
+
+
 def _to_dataset(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_cyclo: np.ndarray,
-                lon_u: ma.MaskedArray, lat_u: ma.MaskedArray, lon_v: ma.MaskedArray, lat_v: ma.MaskedArray) \
-        -> xr.Dataset:
+                lon_u: ma.MaskedArray, lat_u: ma.MaskedArray, lon_v: ma.MaskedArray, lat_v: ma.MaskedArray,
+                conf_path: str, out_attrs: dict, run_datetime: str) -> xr.Dataset:
     ds = xr.Dataset({
         "u_geos": (["y", "x"], u_geos),
         "v_geos": (["y", "x"], v_geos),
@@ -102,19 +126,21 @@ def _to_dataset(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_c
         "u_lat": (["y", "x"], lat_u),
         "v_lon": (["y", "x"], lon_v),
         "v_lat": (["y", "x"], lat_v),
-    })
+    }, attrs=_create_attrs(conf_path, out_attrs, run_datetime))
     return ds
 
 
 def _write_data(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_cyclo: np.ndarray,
                 lon_u: ma.MaskedArray, lat_u: ma.MaskedArray, lon_v: ma.MaskedArray, lat_v: ma.MaskedArray,
-                out_path: str):
-    ds = _to_dataset(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v)
+                conf_path: str, out_attrs: dict, run_datetime: str, out_path: str):
+    ds = _to_dataset(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v, conf_path, out_attrs, run_datetime)
     ds.to_netcdf(out_path)
 
 
 def _main(conf_path: str):
-    mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v, cyclo_kwargs, out_path = (
+    run_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v, cyclo_kwargs, out_attrs, out_path = (
         _read_data(conf_path))
 
     ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v = _apply_mask(mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh,
@@ -128,7 +154,8 @@ def _main(conf_path: str):
     u_cyclo, v_cyclo = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
                                        **cyclo_kwargs)
 
-    _write_data(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v, out_path)
+    _write_data(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v, conf_path, out_attrs, run_datetime,
+                out_path)
 
 
 def main():
