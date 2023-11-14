@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/meom-group/jaxparrow/master/.github/workflows/python-package.yml&label=Python&query=$.jobs.build.strategy.matrix["python-version"])
 [![PyPi](https://img.shields.io/badge/dynamic/xml?url=https://pypi.org/rss/project/jaxparrow/releases.xml&label=PyPi&query=/rss/channel/item[1]/title)](https://pypi.org/project/jaxparrow/)
 ![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
-[![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)](https://meom-group.github.io/jaxparrow/)
+[![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)](https://jaxparrow.readthedocs.io/)
 
 ***jaxparrow*** implements a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
 
@@ -48,7 +48,7 @@ u_cyclo, v_cyclo = cyclogeostrophy(u_geos=u_geos, v_geos=v_geos,
 By default, the `cyclogeostrophy` function relies on our variational method.
 Its `method` argument provides the ability to use an iterative method instead, either the one described by [Penven *et al.*](https://doi.org/10.1016/j.dsr2.2013.10.015), or the one by [Ioannou *et al.*](https://doi.org/10.1029/2019JC015031).
 Additional arguments also give a finer control over the three approaches hyperparameters. \
-See **jaxparrow** [API documentation](https://meom-group.github.io/jaxparrow/api.html) for more details.
+See **jaxparrow** [API documentation](https://jaxparrow.readthedocs.io/en/latest/api.html) for more details.
 
 [Notebooks](notebooks) are available as step-by-step examples.
 

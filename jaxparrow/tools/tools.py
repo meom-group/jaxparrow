@@ -394,8 +394,8 @@ def compute_cyclogeostrophic_diff_jax(u_geos: np.ndarray, v_geos: np.ndarray,
     :returns: the loss
     :rtype: jax.Array
     """
-    J_u = np.sum(
+    J_u = jnp.sum(
         (u_cyclo + compute_advection_v_jax(u_cyclo, v_cyclo, dx_v, dy_v) / coriolis_factor_u - u_geos) ** 2)
-    J_v = np.sum(
+    J_v = jnp.sum(
         (v_cyclo - compute_advection_u_jax(u_cyclo, v_cyclo, dx_u, dy_u) / coriolis_factor_v - v_geos) ** 2)
     return J_u + J_v

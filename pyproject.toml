@@ -27,7 +27,8 @@ dependencies = [
     "tqdm",
     "xarray",
     "jax",
-    "jaxlib"
+    "jaxlib",
+    "optax"
 ]
 dynamic = ["version"]
 
@@ -39,7 +40,7 @@ dev = ["pytest", "sphinx", "myst_parser", "twine", "build"]
 jaxparrow = "jaxparrow:main"
 
 [project.urls]
-"Homepage" = "https://github.com/meom-group/jaxparrow"
+"Homepage" = "https://jaxparrow.readthedocs.io/"
 "Bug Tracker" = "https://github.com/meom-group/jaxparrow/issues"
 
 [tool.setuptools.dynamic]
