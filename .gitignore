@@ -13,6 +13,8 @@ docs/_build
 
 # project specific
 notebooks/data/**
+paper/media
+paper/paper.jats
 
 # IDE related
 .idea
