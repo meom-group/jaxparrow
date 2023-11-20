@@ -90,11 +90,11 @@ Starting from geostrophic currents, `jaxparrow` solves the variational formulati
 
 In comparison, `jaxparrow` can also estimate the cyclogeostrophic currents using the iterative scheme (\autoref{eq:iterative_method}). In this example, it is evident that the point by point update of the velocities is not able to fill the cyclogeostrophic balance, and we notice that this estimation is qualitatively worse than the geostrophy (left and middle panels of \autoref{fig:iterative}). Even with an additional ad-hod threshold imposed on the residuals at the first iteration, divergence from cyclogeostrophic equilibrium immediately occurs (see \autoref{fig:iterative}, right panel).
 
-![As exhibited in the right panel, the iterative approach diverges from the cyclogeostrophic balance; and we can notice from the two other panels that the resulting vorticity is qualitatively worse than the geostrophic one. \label{fig:iterative}](fig/iterative.png){width="100%"}
+![As exhibited in the right panel, the iterative approach diverges from the cyclogeostrophic balance; and we can notice from the two other panels that the resulting normalized vorticity is qualitatively worse than the geostrophic one. \label{fig:iterative}](fig/iterative.png){width="100%"}
 
 Those qualitative observations are inline with the quantitative evaluation we performed. We computed the 1000 first percentiles of the vorticity distributions, and we observe, via a Q-Q plot [@wilk1968probability], that the percentiles of the variational distribution are the closest to the ones of the reference distribution (\autoref{fig:qqplot}).
 
-![The percentiles of the normalized vorticity distributions demonstrate that our variational estimation of the cyclogeostrophy (in orange) corrects the tendency of the geostrophy (in blue) to overestimate positive normalized vorticities, while the iterative scheme (in green) diverges and systematically overestimate the absolute normalized vorticity. \label{fig:qqplot}](fig/qqplot.png){width="50%"}
+![The percentiles of the normalized vorticity distributions demonstrate that our variational estimation of the cyclogeostrophy (in orange) corrects the geostrophy approximation (in blue), while the iterative scheme (in green) tends to diverge from the reference. \label{fig:qqplot}](fig/qqplot.png){width="50%"}
 
 # Availability
 
