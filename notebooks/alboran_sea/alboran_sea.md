@@ -182,7 +182,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_15_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_15_0.png?raw=true)
     
 
 
@@ -225,8 +225,8 @@ plt.show()
 ```
 
 
-    
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_19_0.png?raw=true)
+
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_19_0.png?raw=true)
     
 
 
@@ -291,7 +291,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_25_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_25_0.png?raw=true)
     
 
 
@@ -344,7 +344,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_29_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_29_0.png?raw=true)
     
 
 
@@ -397,7 +397,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_33_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_33_0.png?raw=true)
     
 
 
@@ -437,6 +437,6 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_35_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/joss_paper/notebooks/alboran_sea/output_35_0.png?raw=true)
     
 
