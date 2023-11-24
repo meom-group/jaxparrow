@@ -217,7 +217,7 @@ plt.show()
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
 ```
 
-    (0.0033291178185321795, 0.0032672648957316405)
+    (0.0015805065289780347, 0.0015805066296186456)
 
 ### Iterative estimation
 
@@ -264,7 +264,7 @@ plt.show()
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
 ```
 
-    (0.003233141199482752, 0.0032331411994827525)
+    (0.0013928916370208153, 0.0013928916370208153)
 
 #### Penven
 
@@ -307,4 +307,4 @@ plt.show()
 ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
 ```
 
-    (0.003233132676525826, 0.003233132676525826)
+    (0.0013927963441639634, 0.0013927963441639634)

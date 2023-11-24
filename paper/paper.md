@@ -9,10 +9,10 @@ tags:
   - Python
   - JAX
 authors:
-  - name: Victor E V Z DE ALMEIDA
+  - name: Vadim BERTRAND
     equal-contrib: true
     affiliation: 1
-  - name: Vadim BERTRAND
+  - name: Victor E V Z DE ALMEIDA
     equal-contrib: true
     affiliation: 1
   - name: Julien LE SOMMER
@@ -30,7 +30,7 @@ bibliography: paper.bib
 
 # Summary
 
-Sea Surface Height (SSH) variations measured by satellite altimeters are widely used to estimate Sea Surface Currents (SSC) in oceanographic operational or research applications. The geostrophic balance approximation, which relates the pressure gradient, the current velocity, and the Coriolis force, is commonly employed to estimate SSC from SSH. It is known that under some configurations, the centrifugal acceleration, disregarded in the geostrophic formulation, should be included to the balance, leading to the cyclogeostrophic balance approximation. In general, solving the cyclogeostrophic balance can not be done analytically and numerical methods are needed. However, (1) existing iterative approaches are known to diverge, and ad-hoc methods are used to avoid local discontinuities; (2) publicly available, well maintained implementations are missing.
+Sea Surface Height (SSH) variations measured by satellite altimeters are widely used to estimate Sea Surface Currents (SSC) in oceanographic operational or research applications. The geostrophic balance approximation, which relates the pressure gradient, the current velocity, and the Coriolis force, is commonly employed to estimate SSC from SSH. It is known that under some configurations, the velocity advection term, neglected in the geostrophic formulation, should be included in the balance, leading to the cyclogeostrophic balance approximation. In general, solving the cyclogeostrophic balance can not be done analytically and numerical methods are needed. However, (1) existing iterative approaches are known to diverge, and ad-hoc methods are used to avoid local discontinuities; (2) publicly available, well maintained implementations are missing.
 
 To overcome these limitations, we propose the Python package `jaxparrow`.`jaxparrow` formulates the cyclogeostrophic balance as a variational problem and solve it using a collection of well known optimizers. Its implementation heavily relies on JAX, the Python library bringing together automatic differentiation and just-in-time compilation, and the growing ecosystem around it. `jaxparrow` can be used as a package for an easy integration to existing oceanographic pipelines, or as a standalone executable working directly with NetCDF files.
 
@@ -44,7 +44,7 @@ f \left(\vec{k} \times \vec{u}_g \right) = -g \nabla \eta,
 
 where $f$ is the Coriolis parameter, $\vec{k}$ the vertical unit vector, $\vec{u}_g$ the geostrophic velocity, $g$ the gravity, and $\eta$ the SSH.
 
-However, as discussed by  @bakun2006fronts, @charney1955gulf,and @maximenko2006mean, geostrophy alone is not always sufficient to accurately estimate SSC, and an advective term should be considered. For example, it has been shown by @penven2014cyclogeostrophic that, in the highly energetic Mozambique Channel, the geostrophic velocity can produce errors in the order of 30%. In these conditions, the centrifugal acceleration and the inertial effects of oceanic dynamics are no longer neglectable. To account for those forces, the advective term $\vec{u} \cdot \nabla \vec{u}$ is added back to the balance. Considering a horizontal, stationary, and inviscid flow, the momentum equation linking SSC velocities $\vec{u}$ with SSH —through geostrophic velocities $\vec{u}_g$ from \autoref{eq:geostrophic_balance}— can be expressed as:
+The geostrophic equation represents a drastic approximation of the Navier-Stokes equation adapted to ocean dynamics. However, as discussed by  @bakun2006fronts, @charney1955gulf,and @maximenko2006mean, geostrophy alone is not always sufficient to accurately estimate SSC. In particular, @penven2014cyclogeostrophic showed that, in the highly energetic Mozambique Channel, the geostrophic approximation can produce errors of the order of 30% in velocity estimates, and that the advection term $\vec{u} \cdot \nabla \vec{u}$ was needed in the balance to reduce these errors. Considering a horizontal, stationary, and inviscid flow, the momentum equation linking SSC velocities $\vec{u}$ with SSH —through geostrophic velocities $\vec{u}_g$ from \autoref{eq:geostrophic_balance}— can be expressed as:
 
 \begin{equation}\label{eq:cyclogeostrophic_balance}
 \vec{u}_c - \frac{\vec{k}}{f} \times \left(\vec{u}_c \cdot \nabla \vec{u}_c \right) = \vec{u}_g, 
@@ -99,7 +99,5 @@ Those qualitative observations are supported by more quantitative analysis. We c
 # Availability
 
 Beside the novel variational formulation, `jaxparrow` also offers the first to our knowledge open implementation of the cyclogeostrophy inversion. The code is available on [GitHub](https://github.com/meom-group/jaxparrow), with the specific tag `joss` for the version matching this publication; and the documentation, with pip-installation instructions, usage examples, and toy notebooks, is hosted on [Read the Docs](https://jaxparrow.readthedocs.io).
-
-# Acknowledgements
 
 # References
