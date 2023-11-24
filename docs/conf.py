@@ -18,7 +18,7 @@ from version import __version__
 
 project = "jaxparrow"
 copyright = "2023, Victor E V Z De Almeida, Vadim Bertrand, Julien Le Sommer, Emmanuel Cosme"
-author = "Victor E V Z De Almeida, Vadim Bertrand, Julien Le Sommer, Emmanuel Cosme"
+author = "Vadim Bertrand, Victor E V Z De Almeida, Julien Le Sommer, Emmanuel Cosme"
 release = __version__
 
 # -- General configuration ---------------------------------------------------
@@ -42,8 +42,3 @@ html_theme = "sphinx_rtd_theme"
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 ]
-html_theme_options = {
-    "description": "A JAX implementation of the cyclogeostrophic balance inversion",
-    "github_user": "meom-group",
-    "github_repo": "jaxparrow",
-}
