@@ -1,0 +1,26 @@
+# Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
+title: Convergence of the variational inversion of the cyclogeostrophic balance
+author: Vadim Bertrand
+
+# Force re-execution of notebooks on each build.
+# See https://jupyterbook.org/content/execute.html
+execute:
+  execute_notebooks: auto
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: convergence.tex
+    toctree_only: True
+  latex_toplevel_sectioning: section
+
+# Add a bibtex file so that we can create citations
+bibtex_bibfiles:
+  - references.bib
+
+sphinx:
+  config:
+    bibtex_reference_style: author_year
+    bibtex_default_style: plain

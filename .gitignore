@@ -13,6 +13,8 @@ docs/_build
 
 # project specific
 notebooks/data/**
+notebooks/convergence/data/**
+notebooks/convergence/_build
 
 # IDE related
 .idea
