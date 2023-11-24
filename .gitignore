@@ -15,6 +15,7 @@ docs/_build
 notebooks/data/**
 paper/media
 paper/paper.jats
+paper/paper.pdf
 
 # IDE related
 .idea
