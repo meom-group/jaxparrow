@@ -17,7 +17,7 @@ from version import __version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "jaxparrow"
-copyright = "2023, Victor E V Z De Almeida, Vadim Bertrand, Julien Le Sommer, Emmanuel Cosme"
+copyright = "2023, Vadim Bertrand, Victor E V Z De Almeida, Julien Le Sommer, Emmanuel Cosme"
 author = "Vadim Bertrand, Victor E V Z De Almeida, Julien Le Sommer, Emmanuel Cosme"
 release = __version__
 
