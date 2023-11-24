@@ -96,3 +96,15 @@ cyclogeostrophy:
   optim: "sgd"
   optim_kwargs:
     learning_rate: 0.001
+
+# -------------------------
+# Output Dataset attributes
+# -------------------------
+# allows to customize some metadata attributes included to the outputted dataset.
+# follows CF-1.10 convention (see http://cfconventions.org/conventions.html)
+# attributes listed in the convention but not here are not expected to be modified, but we do not enforce it.
+# provided example values are the default ones. Note that if not provided, the institution entry will remain empty.
+
+out_attrs:
+  title: "ocean geostrophic and cyclogeostrophic currents"
+  institution: ""
