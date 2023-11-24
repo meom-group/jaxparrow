@@ -50,7 +50,7 @@ Its `method` argument provides the ability to use an iterative method instead, e
 Additional arguments also give a finer control over the three approaches hyperparameters. \
 See **jaxparrow** [API documentation](https://jaxparrow.readthedocs.io/en/latest/api.html) for more details.
 
-[Notebooks](examples) are available as step-by-step examples.
+[Notebooks](https://jaxparrow.readthedocs.io/en/latest/examples.html) are available as step-by-step examples.
 
 ### As an executable
 
