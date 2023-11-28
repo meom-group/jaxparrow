@@ -14,7 +14,7 @@ kernelspec:
 
 The goal of this document is to open questions on some optimization results obtained when estimating cyclogeostrophic currents using a variational approach.
 
-First, we briefly present the oceanographic background in Sections {ref}`sec:geostrophy` and {ref}`sec:cyclogeostrophy`. In Section {ref}`sec:cyclogeostrophy`, we also introduce our numerical resolution setting ({ref}`subsec:variational_approach`), and an aspect of our problem of potential interest ({ref}`subsec:solution_existence`). Finally, Section {ref}`sec:optimization_questions` reveals some results, and our related questions. 
+First, we briefly present the oceanographic background in Sections {ref}`sec:geostrophy` and {ref}`sec:cyclogeostrophy`. In Section {ref}`sec:cyclogeostrophy`, we also introduce our numerical resolution setting ({ref}`subsec:variational_approach`), and an aspect of our problem of potential interest ({ref}`subsec:solution_existence`). Finally, Section {ref}`sec:optimization_questions` reveals some results leading to questions of potential interest. 
 
 +++
 
@@ -35,7 +35,7 @@ where $f$ is the Coriolis parameter, $\vec{k}$ the vertical unit vector, $\vec{u
 (sec:cyclogeostrophy)=
 # Cyclogeostrophic balance
 
-However, geostrophy alone is not always sufficient to accurately estimate SSC {cite}`penven2014cyclogeostrophic`, and the advective term $\vec{u} \cdot \nabla \vec{u}$ should be added back to the balance to take into consideration the centrifugial acceleration.
+However, geostrophy alone is not always sufficient to accurately estimate SSC {cite}`penven2014cyclogeostrophic`, and the advective term $\vec{u} \cdot \nabla \vec{u}$ should be added back to the balance.
 Skipping some rearrangements, we can express the cyclogeostrophic balance as:
 
 $$
@@ -96,6 +96,7 @@ Our interrogations are based on some unexpected (to us) results we obtained when
 ```{code-cell} ipython3
 :tags: [hide-input,hide-output]
 
+from IPython.utils import io
 import os
 
 import matplotlib.colors as colors
@@ -214,7 +215,8 @@ coriolis_factor_v = compute_coriolis_factor(lat_v)
 ```
 
 More precisely, we have access to simulated SSH and SSC velocities, and we derive SSC normalized vorticities ($\xi / f$) from the velocities (see {numref}`fig:nemo_data`).
-Highly negative (smaller than -2) vorticities are typical unstable conditions for which the cyclogeostrophic balance does not hold a mathematical solution (because cyclogeostrophy is no longer a physically valid approximation).
+
+Normalized vorticities smaller than -1 (depicted as intense blue in the bottom panels of {numref}`fig:nemo_data`) represent highly unstable conditions {cite}`shcherbina2013statistics`. In such cases, the mathematical solution for cyclogeostrophic balance is not expected to exist, as cyclogeostrophy is no longer a physically valid approximation.
 
 ```{code-cell} ipython3
 :tags: [hide-input,hide-output]
@@ -226,6 +228,8 @@ norm_vorticity = compute_norm_vorticity(uvel, vvel, dy_u, dx_v, mask_ssh, coriol
 ---
 tags: [hide-input]
 mystnb:
+  image:
+    width: 66.7%
   figure:
     caption: |
       NEMO data
@@ -235,7 +239,7 @@ mystnb:
 vmin = -4
 vmax = -vmin
 
-_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 20/3))
+_, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=get_figsize(2/3, 10.5/3/2))
 
 ax1.set_title("Sea Surface Height")
 ax1.set_xlabel("longitude")
@@ -253,11 +257,21 @@ clb2.ax.set_title("$\\vert\\vert \\vec{u} \\vert\\vert$ (m/s)")
 
 ax3.set_title("Current normalized vorticity")
 ax3.set_xlabel("longitude")
+ax3.set_ylabel("latitude")
 im = ax3.pcolormesh(lon, lat, norm_vorticity, cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax)
 clb3 = plt.colorbar(im, ax=ax3)
 clb3.ax.set_title("$\\xi / f$")
 
+ax4.set_title("Unstable location")
+ax4.set_xlabel("longitude")
+im = ax4.pcolormesh(lon, lat, norm_vorticity<-1, cmap=colors.ListedColormap(["lightgrey", "darkblue"]), 
+                    rasterized=True, vmin=0, vmax=1)
+clb4 = plt.colorbar(im, ax=ax4, ticks=[0, 1])
+clb4.ax.set_yticklabels(["False", "True"])
+clb4.ax.set_title("$\\xi / f < -1$")
+
+plt.tight_layout()
 plt.show()
 ```
 
@@ -286,7 +300,7 @@ mystnb:
     name: fig:geos
 ---
 
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=get_figsize(2/3, 12.66/3))
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=get_figsize(2/3, 10.5/3))
 
 ax1.set_title("NEMO data")
 ax1.set_xlabel("longitude")
@@ -303,6 +317,7 @@ im = ax2.pcolormesh(lon, lat, norm_vorticity_geos, cmap="RdBu_r", shading="auto"
 clb2 = plt.colorbar(im, ax=ax2)
 clb2.ax.set_title("$\\xi / f$")
 
+plt.tight_layout()
 plt.show()
 ```
 
@@ -317,13 +332,16 @@ Next, `jaxparrow` estimates the cyclogeostrophic velocities by minimizing Equati
 Using gradient descent, we obtain very good qualitative results (see {numref}`fig:sgd`), with little sensitivity to the learning rate (not shown here).
 
 ```{code-cell} ipython3
-:tags: [hide-input,hide-output]
+:tags: [hide-input]
 
-u_var, v_var, losses_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
-                                           optim="sgd", return_losses=True)
-u_var = ma.masked_array(u_var, mask_u)
-v_var = ma.masked_array(v_var, mask_v)
-norm_vorticity_var = compute_norm_vorticity(u_var, v_var, dy_u, dx_v, mask_ssh, coriolis_factor)
+with io.capture_output() as captured:
+    u_var, v_var, losses_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
+                                               optim="sgd", return_losses=True)
+    u_var = ma.masked_array(u_var, mask_u)
+    v_var = ma.masked_array(v_var, mask_v)
+    norm_vorticity_var = compute_norm_vorticity(u_var, v_var, dy_u, dx_v, mask_ssh, coriolis_factor)
+
+print("SGD final loss: {}".format(losses_var[-1]))
 ```
 
 ```{code-cell} ipython3
@@ -336,7 +354,7 @@ mystnb:
     name: fig:sgd
 ---
 
-_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 20/3))
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 15/3))
 
 ax1.set_title("NEMO data")
 ax1.set_xlabel("longitude")
@@ -358,6 +376,7 @@ ax3.set_xlabel("step")
 ax3.set_ylabel("disequilibrium")
 ax3.plot(losses_var[:np.argmin(losses_var)+10])
 
+plt.tight_layout()
 plt.show()
 ```
 
@@ -365,16 +384,19 @@ plt.show()
 
 ### Adam variation
 
-When using Adam, the loss curve suggests that we are still converging, but clearly, towards a qualitatively worse solution (see {numref}`fig:adam`).
+When using Adam, the loss curve from {numref}`fig:adam` suggests that we are still converging, and the last evaluation of the cost function is smaller than for SGD. But, qualitatively, the solution appears to be much much worse than for SGD (see {numref}`fig:adam`).
 
 ```{code-cell} ipython3
-:tags: [hide-input,hide-output]
+:tags: [hide-input]
 
-u_var, v_var, losses_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
-                                           optim="adam", return_losses=True)
-u_var = ma.masked_array(u_var, mask_u)
-v_var = ma.masked_array(v_var, mask_v)
-norm_vorticity_var = compute_norm_vorticity(u_var, v_var, dy_u, dx_v, mask_ssh, coriolis_factor)
+with io.capture_output() as captured:
+    u_var, v_var, losses_var = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
+                                               optim="adam", return_losses=True)
+    u_var = ma.masked_array(u_var, mask_u)
+    v_var = ma.masked_array(v_var, mask_v)
+    norm_vorticity_var = compute_norm_vorticity(u_var, v_var, dy_u, dx_v, mask_ssh, coriolis_factor)
+
+print("Adam final loss: {}".format(losses_var[-1]))
 ```
 
 ```{code-cell} ipython3
@@ -387,7 +409,7 @@ mystnb:
     name: fig:adam
 ---
 
-_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 20/3))
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 15/3))
 
 ax1.set_title("NEMO data")
 ax1.set_xlabel("longitude")
@@ -409,6 +431,7 @@ ax3.set_xlabel("step")
 ax3.set_ylabel("disequilibrium")
 ax3.plot(losses_var[:np.argmin(losses_var)+10])
 
+plt.tight_layout()
 plt.show()
 ```
 
@@ -416,13 +439,11 @@ plt.show()
 
 ## Open questions
 
-These first observations lead us to believe that the optimization problem is probably not "smooth", and that several solutions exist.
+These first observations lead us to believe that the optimization problem is probably not regular, and that several solutions exist.
 We think that it could be related to physical unstable conditions resulting in the absence of mathematical solutions to Equation {eq}`cyclogeostrophic_balance` (as exhibited in Equation {eq}`gradient_wind_sol`).
-Our questions at this point could be formulated as:
-- are there optimization strategies that could account for these irregularities?
-  - optimizing on subparts of the domain, masking areas with highly negative geostrophic vorticities, ...
-- are there theoretical properties of the optimizers explaining our observations?
-- how sensitive the solution is to the initial guess (that is geostrophic velocities)?
+This leads us to question if:
+- some mathematical conditions on the solution could by found?
+- the solution could be less dependent on the optimizer with some regularization of the loss function?
 
 +++
 
