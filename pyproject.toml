@@ -28,6 +28,7 @@ dependencies = [
     "xarray",
     "jax",
     "jaxlib",
+    "jaxtyping",
     "optax"
 ]
 dynamic = ["version"]
