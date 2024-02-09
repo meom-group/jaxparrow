@@ -1,6 +1,5 @@
 import argparse
 from datetime import datetime
-from typing import Union
 import yaml
 
 import numpy as np
@@ -8,12 +7,13 @@ import numpy.ma as ma
 import xarray as xr
 
 from .version import __version__
-from .tools import compute_coriolis_factor, compute_spatial_step
 from .cyclogeostrophy import cyclogeostrophy
 from .geostrophy import geostrophy
 
 
-def _read_data(conf_path: str) -> list:
+def _read_data(
+        conf_path: str
+) -> list:
     with open(conf_path) as f:
         conf = yaml.safe_load(f)  # parse conf file
 
@@ -54,46 +54,39 @@ def _read_data(conf_path: str) -> list:
     return values
 
 
-def _apply_mask(mask_ssh: Union[np.ndarray, None], mask_u: Union[np.ndarray, None], mask_v: Union[np.ndarray, None],
-                ssh: np.ndarray, lon_ssh: np.ndarray, lat_ssh: np.ndarray,
-                lon_u: np.ndarray, lat_u: np.ndarray, lon_v: np.ndarray, lat_v: np.ndarray) -> tuple:
-    def __do_apply(arr: np.ndarray, mask: Union[np.ndarray, None]) -> np.ndarray:
-        if mask is None:
-            mask = np.ones_like(arr)
-        mask = 1 - mask  # don't forget to invert the masks (for ma.MaskedArray, True means invalid)
-        return ma.masked_array(arr, mask)
-
-    ssh = __do_apply(ssh, mask_ssh)
-    lon_ssh = __do_apply(lon_ssh, mask_ssh)
-    lat_ssh = __do_apply(lat_ssh, mask_ssh)
-
-    lon_u = __do_apply(lon_u, mask_u)
-    lat_u = __do_apply(lat_u, mask_u)
-
-    lon_v = __do_apply(lon_v, mask_v)
-    lat_v = __do_apply(lat_v, mask_v)
-
-    return ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v
+def _reverse_masks(
+        mask_ssh: np.ndarray,
+        mask_u: np.ndarray,
+        mask_v: np.ndarray
+) -> [np.ndarray, np.ndarray, np.ndarray]:
+    def do_reverse(mask):
+        if mask is not None:
+            return 1 - mask
+    return do_reverse(mask_ssh), do_reverse(mask_u), do_reverse(mask_v)
 
 
-def _compute_spatial_step(lon_ssh: ma.MaskedArray, lat_ssh: ma.MaskedArray,
-                          lon_u: ma.MaskedArray, lat_u: ma.MaskedArray,
-                          lon_v: ma.MaskedArray, lat_v: ma.MaskedArray) -> tuple:
-    dx_ssh, dy_ssh = compute_spatial_step(lat_ssh, lon_ssh)
-    dx_u, dy_u = compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = compute_spatial_step(lat_v, lon_v)
+def _apply_masks(
+        u_geos: np.ndarray,
+        v_geos: np.ndarray,
+        u_cyclo: np.ndarray,
+        v_cyclo: np.ndarray,
+        mask_u: np.ndarray,
+        mask_v: np.ndarray
+) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def do_apply_mask(arr, mask):
+        if mask is not None:
+            return ma.masked_array(arr, mask)
+        else:
+            return arr
+    return (do_apply_mask(u_geos, mask_u), do_apply_mask(v_geos, mask_v),
+            do_apply_mask(u_cyclo, mask_u), do_apply_mask(v_cyclo, mask_v))
 
-    return dx_ssh, dy_ssh, dx_u, dy_u, dx_v, dy_v
 
-
-def _compute_coriolis_factor(lat_u: ma.MaskedArray, lat_v: ma.MaskedArray) -> tuple:
-    coriolis_factor_u = compute_coriolis_factor(lat_u)
-    coriolis_factor_v = compute_coriolis_factor(lat_v)
-
-    return coriolis_factor_u, coriolis_factor_v
-
-
-def _create_attrs(conf_path: str, out_attrs: dict, run_datetime: str) -> dict:
+def _create_attrs(
+        conf_path: str,
+        out_attrs: dict,
+        run_datetime: str
+) -> dict:
     with open(conf_path) as f:
         raw_conf = f.read()
 
@@ -113,9 +106,19 @@ def _create_attrs(conf_path: str, out_attrs: dict, run_datetime: str) -> dict:
     return attrs
 
 
-def _to_dataset(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_cyclo: np.ndarray,
-                lon_u: ma.MaskedArray, lat_u: ma.MaskedArray, lon_v: ma.MaskedArray, lat_v: ma.MaskedArray,
-                conf_path: str, out_attrs: dict, run_datetime: str) -> xr.Dataset:
+def _to_dataset(
+        u_geos: ma.MaskedArray,
+        v_geos: ma.MaskedArray,
+        u_cyclo: ma.MaskedArray,
+        v_cyclo: ma.MaskedArray,
+        lat_u: ma.MaskedArray,
+        lon_u: ma.MaskedArray,
+        lat_v: ma.MaskedArray,
+        lon_v: ma.MaskedArray,
+        conf_path: str,
+        out_attrs: dict,
+        run_datetime: str
+) -> xr.Dataset:
     ds = xr.Dataset({
         "u_geos": (["y", "x"], u_geos),
         "v_geos": (["y", "x"], v_geos),
@@ -130,31 +133,41 @@ def _to_dataset(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_c
     return ds
 
 
-def _write_data(u_geos: np.ndarray, v_geos: np.ndarray, u_cyclo: np.ndarray, v_cyclo: np.ndarray,
-                lon_u: ma.MaskedArray, lat_u: ma.MaskedArray, lon_v: ma.MaskedArray, lat_v: ma.MaskedArray,
-                conf_path: str, out_attrs: dict, run_datetime: str, out_path: str):
-    ds = _to_dataset(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v, conf_path, out_attrs, run_datetime)
+def _write_data(
+        u_geos: ma.MaskedArray,
+        v_geos: ma.MaskedArray,
+        u_cyclo: ma.MaskedArray,
+        v_cyclo: ma.MaskedArray,
+        lat_u: ma.MaskedArray,
+        lon_u: ma.MaskedArray,
+        lat_v: ma.MaskedArray,
+        lon_v: ma.MaskedArray,
+        conf_path: str,
+        out_attrs: dict,
+        run_datetime: str,
+        out_path: str
+):
+    ds = _to_dataset(u_geos, v_geos, u_cyclo, v_cyclo, lat_u, lon_u, lat_v, lon_v, conf_path, out_attrs, run_datetime)
     ds.to_netcdf(out_path)
 
 
-def _main(conf_path: str):
+def _main(
+        conf_path: str
+):
     run_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v, cyclo_kwargs, out_attrs, out_path = (
         _read_data(conf_path))
 
-    ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v = _apply_mask(mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh,
-                                                                    lon_u, lat_u, lon_v, lat_v)
+    mask_ssh, mask_u, mask_v = _reverse_masks(mask_ssh, mask_u, mask_v)
 
-    dx_ssh, dy_ssh, dx_u, dy_u, dx_v, dy_v = _compute_spatial_step(lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v)
-
-    coriolis_factor_u, coriolis_factor_v = _compute_coriolis_factor(lat_u, lat_v)
-
-    u_geos, v_geos = geostrophy(ssh, dx_ssh, dy_ssh, coriolis_factor_u, coriolis_factor_v)
-    u_cyclo, v_cyclo = cyclogeostrophy(u_geos, v_geos, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
+    u_geos, v_geos = geostrophy(ssh, lat_ssh, lon_ssh, lat_u, lat_v, mask_ssh, mask_u, mask_v)
+    u_cyclo, v_cyclo = cyclogeostrophy(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v,
                                        **cyclo_kwargs)
 
-    _write_data(u_geos, v_geos, u_cyclo, v_cyclo, lon_u, lat_u, lon_v, lat_v, conf_path, out_attrs, run_datetime,
+    u_geos, v_geos, u_cyclo, v_cyclo = _apply_masks(u_geos, v_geos, u_cyclo, v_cyclo, mask_u, mask_v)
+
+    _write_data(u_geos, v_geos, u_cyclo, v_cyclo, lat_u, lon_u, lat_v, lon_v, conf_path, out_attrs, run_datetime,
                 out_path)
 
 

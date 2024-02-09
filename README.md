@@ -27,23 +27,36 @@ By default, **jaxparrow** will install a CPU-only version of JAX if no other ver
 
 Two functions are directly available from `jaxparrow`:
 
-- `geostrophy`: computes the geostrophic velocity field (returns two `numpy 2darray`) from a SSH `2darray`, two `2darray` of spatial steps, and two `2darray` of Coriolis factors.
-- `cyclogeostrophy`: computes the cyclogeostrophic velocity field (returns two `2darray`) from two `2darray` of geostrophic velocities, four `2darray` of spatial steps, and two `2darray` of Coriolis factors.
+- `geostrophy` computes the geostrophic velocity field (returns two `2darray`) from:
+  - a SSH field (a `2darray`), 
+  - its latitude and longitude grids (two `2darray`), 
+  - the latitude grids at the U and V points (two `2darray`), 
+  - and the optional mask grids at the T, U and V points (three `2darray`).
+- `cyclogeostrophy` computes the cyclogeostrophic velocity field (returns two `2darray`) from:
+  - a geostrophic velocity fields (two `2darray`), 
+  - its latitude and longitude grids at U and V points (four `2darray`), 
+  - and the optional mask grids at the U and V points (two `2darray`).
 
 *Because **jaxparrow** uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids, and the SSH on one grid.*
 
-In a Python script, assuming that the input grids have already been initialised / imported, it would simply resort to:
+In a Python script, assuming that the input grids have already been initialised / imported, it would resort to:
 
 ```python
 from jaxparrow import cyclogeostrophy, geostrophy
 
 u_geos, v_geos = geostrophy(ssh=ssh,    
-                            dx_ssh=dx_ssh, dy_ssh=dy_ssh,
-                            coriolis_factor_u=coriolis_factor_u, coriolis_factor_v=coriolis_factor_v)
+                            lat=lat, lon=lon,
+                            lat_u=lat_u, lat_v=lat_v,
+                            mask_t=mask_t, mask_u=mask_u, mask_v=mask_v)
 u_cyclo, v_cyclo = cyclogeostrophy(u_geos=u_geos, v_geos=v_geos,
-                                   dx_u=dx_u, dx_v=dx_v, dy_u=dy_u, dy_v=dy_v,
-                                   coriolis_factor_u=coriolis_factor_u, coriolis_factor_v=coriolis_factor_v)
+                                   lat_u=lat_u, lon_u=lon_u,
+                                   lat_v=lat_v, lon_v=lon_v,
+                                   mask_u=mask_u, mask_v=mask_v)
 ```
+
+To vectorise the application of the `geostrophy` and `cyclogeostrophy` functions across an added time dimension, one aims to utilize `vmap`.
+However, this necessitates avoiding the use of `np.ma.masked_array`. 
+Hence, our functions accommodate mask `array` as parameters to effectively consider masked regions.
 
 By default, the `cyclogeostrophy` function relies on our variational method.
 Its `method` argument provides the ability to use an iterative method instead, either the one described by [Penven *et al.*](https://doi.org/10.1016/j.dsr2.2013.10.015), or the one by [Ioannou *et al.*](https://doi.org/10.1029/2019JC015031).
