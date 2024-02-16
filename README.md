@@ -8,7 +8,7 @@
 ***jaxparrow*** implements a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
 
 It leverages the power of [JAX](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem. 
-Given the Sea Surface Height (SSH) or the geostrophic velocity field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
+Given the Sea Surface Height (SSH) field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
 
 ## Installation
 
@@ -29,34 +29,31 @@ Two functions are directly available from `jaxparrow`:
 
 - `geostrophy` computes the geostrophic velocity field (returns two `2darray`) from:
   - a SSH field (a `2darray`), 
-  - its latitude and longitude grids (two `2darray`), 
-  - the latitude grids at the U and V points (two `2darray`), 
-  - and the optional mask grids at the T, U and V points (three `2darray`).
+  - the latitude and longitude at the T points (two `2darray`), 
+  - an optional mask grid (one `2darray`).
 - `cyclogeostrophy` computes the cyclogeostrophic velocity field (returns two `2darray`) from:
-  - a geostrophic velocity fields (two `2darray`), 
-  - its latitude and longitude grids at U and V points (four `2darray`), 
-  - and the optional mask grids at the U and V points (two `2darray`).
+  - a SSH field (a `2darray`), 
+  - the latitude and longitude at the T points (two `2darray`), 
+  - an optional mask grid (one `2darray`).
 
-*Because **jaxparrow** uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids, and the SSH on one grid.*
+*Because **jaxparrow** uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the SSH on one grid (T).*
 
 In a Python script, assuming that the input grids have already been initialised / imported, it would resort to:
 
 ```python
 from jaxparrow import cyclogeostrophy, geostrophy
 
-u_geos, v_geos = geostrophy(ssh=ssh,    
-                            lat=lat, lon=lon,
-                            lat_u=lat_u, lat_v=lat_v,
-                            mask_t=mask_t, mask_u=mask_u, mask_v=mask_v)
-u_cyclo, v_cyclo = cyclogeostrophy(u_geos=u_geos, v_geos=v_geos,
-                                   lat_u=lat_u, lon_u=lon_u,
-                                   lat_v=lat_v, lon_v=lon_v,
-                                   mask_u=mask_u, mask_v=mask_v)
+u_geos, v_geos = geostrophy(ssh_t=ssh,
+                            lat_t=lat, lon_t=lon,
+                            mask=mask)
+u_cyclo, v_cyclo = cyclogeostrophy(ssh_t=ssh,
+                                   lat_t=lat, lon_t=lon,
+                                   mask=mask)
 ```
 
 To vectorise the application of the `geostrophy` and `cyclogeostrophy` functions across an added time dimension, one aims to utilize `vmap`.
 However, this necessitates avoiding the use of `np.ma.masked_array`. 
-Hence, our functions accommodate mask `array` as parameters to effectively consider masked regions.
+Hence, our functions accommodate mask `array` as parameter to effectively consider masked regions.
 
 By default, the `cyclogeostrophy` function relies on our variational method.
 Its `method` argument provides the ability to use an iterative method instead, either the one described by [Penven *et al.*](https://doi.org/10.1016/j.dsr2.2013.10.015), or the one by [Ioannou *et al.*](https://doi.org/10.1029/2019JC015031).

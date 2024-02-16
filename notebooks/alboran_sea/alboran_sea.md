@@ -2,15 +2,20 @@
 import os
 
 from cartopy import crs as ccrs
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.ma as ma
 import optax
 import xarray as xr
 
-from jaxparrow.tools import tools
 from jaxparrow import cyclogeostrophy, geostrophy
+from jaxparrow.tools import geometry, kinematics, operators
+
+%reload_ext autoreload
+%autoreload 2
 ```
+
 
 ```python
 # utility functions
@@ -44,6 +49,8 @@ The next cell does this for you, assuming wget and tar are available.
 !rm data/alboransea.tar.gz
 ```
 
+
+
 ```python
 data_dir = "data"
 name_mask = "mask_alboransea.nc"
@@ -53,39 +60,38 @@ name_u = "alboransea_sozocrtx.nc"
 name_v = "alboransea_somecrty.nc"
 ```
 
+
 ```python
 ds_coord = xr.open_dataset(os.path.join(data_dir, name_coord))
-lon = ds_coord.nav_lon.values
-lat = ds_coord.nav_lat.values
+lat_t = jnp.copy(ds_coord.nav_lat.values)
+lon_t = jnp.copy(ds_coord.nav_lon.values)
 
 ds_mask = xr.open_dataset(os.path.join(data_dir, name_mask))
-mask_ssh = ds_mask.tmask[0,0].values
-mask_u = ds_mask.umask[0,0].values
-mask_v = ds_mask.vmask[0,0].values
+mask = jnp.copy(ds_mask.tmask[0,0].values)
 
 ds_ssh = xr.open_dataset(os.path.join(data_dir, name_ssh))
-lon_ssh = ds_ssh.nav_lon.values
-lat_ssh = ds_ssh.nav_lat.values
-ssh = ds_ssh.sossheig[0].values
+ssh = jnp.copy(ds_ssh.sossheig[0].values)
 
 ds_u = xr.open_dataset(os.path.join(data_dir, name_u))
-lon_u = ds_u.nav_lon.values
-lat_u = ds_u.nav_lat.values
-uvel = ds_u.sozocrtx[0].values
+uvel = jnp.copy(ds_u.sozocrtx[0].values)
 
 ds_v = xr.open_dataset(os.path.join(data_dir, name_v))
-lon_v = ds_v.nav_lon.values
-lat_v = ds_v.nav_lat.values
-vvel = ds_v.somecrty[0].values
+vvel = jnp.copy(ds_v.somecrty[0].values)
 ```
 
-We use `array` of masks to restrict the domain to the marine area.
+We use a mask `array` to restrict the domain to the marine area.
 
 
 ```python
-mask_u = 1 - mask_u
-mask_v = 1 - mask_v
-mask_ssh = 1 - mask_ssh
+mask = 1 - mask
+```
+
+`jaxparrow` only needs the coordinates of the T points of the grid (`lat` and `lon` here).
+The corresponding U and V coordinates are derived automatically using NEMO convention [see](https://www.nemo-ocean.eu/doc/node19.html), as in our example.
+
+
+```python
+lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
 ```
 
 ### Visualising SSH and currents
@@ -93,42 +99,43 @@ mask_ssh = 1 - mask_ssh
 
 ```python
 # compute some characteristics
-norm_vorticity = tools.compute_norm_vorticity(uvel, vvel, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v)
-magnitude = ma.masked_array(tools.compute_magnitude(uvel, vvel), mask_ssh)
+norm_vorticity_t = kinematics.normalized_relative_vorticity(
+    uvel, vvel, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True
+)
+magnitude = ma.masked_array(kinematics.magnitude(uvel, vvel, interpolate=True), mask)
 
 mmin = np.nanmin(magnitude)
 mmax = np.nanmax(magnitude)
 
 # interpolate to the center of the cells
-norm_vorticity_t = tools.interpolate_south_west(norm_vorticity, axis=0, neuman=False)
-norm_vorticity_t = tools.interpolate_south_west(norm_vorticity_t, axis=1, neuman=False)
-uvel_t = tools.interpolate_south_west(uvel, axis=1, neuman=False)
-vvel_t = tools.interpolate_south_west(vvel, axis=0, neuman=False)
+uvel_t = operators.interpolation(uvel, axis=1, padding="left")
+vvel_t = operators.interpolation(vvel, axis=0, padding="left")
 ```
+
 
 ```python
 _, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=get_figsize(1, 20/3), 
                                   subplot_kw={"projection": ccrs.PlateCarree()})
 
 ax1.set_title("Sea Surface Height")
-im = ax1.pcolormesh(lon, lat, ma.masked_array(ssh, mask_ssh), 
+im = ax1.pcolormesh(lon_t, lat_t, ma.masked_array(ssh, mask), 
                     cmap="turbo", shading="auto",
                     transform=ccrs.PlateCarree())
 clb1 = plt.colorbar(im, ax=ax1)
 clb1.ax.set_title("SSH (m)")
 
 ax2.set_title("Current velocity")
-im = ax2.pcolormesh(lon, lat, magnitude, 
+im = ax2.pcolormesh(lon_t, lat_t, magnitude, 
                     shading="auto",
                     transform=ccrs.PlateCarree())
-ax2.quiver(lon[::5, ::5], lat[::5, ::5], 
-           ma.masked_array(uvel_t, mask_u)[::5, ::5], ma.masked_array(vvel_t, mask_v)[::5, ::5], 
+ax2.quiver(lon_t[::5, ::5], lat_t[::5, ::5], 
+           ma.masked_array(uvel_t, mask)[::5, ::5], ma.masked_array(vvel_t, mask)[::5, ::5], 
            color="k")
 clb2 = plt.colorbar(im, ax=ax2)
 clb2.ax.set_title("$\\vert\\vert \\vec{u} \\vert\\vert$ (m/s)")
 
 ax3.set_title("Current normalized vorticity")
-im = ax3.pcolormesh(lon, lat, norm_vorticity_t, 
+im = ax3.pcolormesh(lon_t, lat_t, norm_vorticity_t, 
                     cmap="RdBu_r", shading="auto", 
                     vmin=vmin, vmax=vmax,
                     transform=ccrs.PlateCarree())
@@ -137,21 +144,23 @@ clb3.ax.set_title("$\\xi / f$")
 
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_10_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_12_0.png?raw=true)
+    
 
 
 ## Geostrophic balance
 
-We estimate the geostrophic velocities using the `geostrophy` function, given the SSH, the spatial steps, and the coriolis factors.
+We estimate the geostrophic velocities using the `geostrophy` function, given the SSH, the coordinates of the T points, and an optional mask.
+The function can also returns the the U and V coordinates of the velocity U and V components (they are the same as the one computed earlier for illustration, so we use `return_grids=False`).
 
 
 ```python
-u_geos, v_geos = geostrophy(ssh, lat_ssh, lon_ssh, lat_u, lat_v, mask_ssh, mask_u, mask_v)
+u_geos, v_geos = geostrophy(ssh, lat_t, lon_t, mask, return_grids=False)
 
-norm_vorticity_geos = tools.compute_norm_vorticity(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v)
-norm_vorticity_geos_t = tools.interpolate_south_west(norm_vorticity_geos, axis=0, neuman=False)
-norm_vorticity_geos_t = tools.interpolate_south_west(norm_vorticity_geos_t, axis=1, neuman=False)
+norm_vorticity_geos_t = kinematics.normalized_relative_vorticity(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True)
 ```
 
 ### Comparison to NEMO's velocities
@@ -162,23 +171,23 @@ fig, axs = plt.subplots(2, 2, figsize=get_figsize(2/3, 12.66/6),
                         subplot_kw={"projection": ccrs.PlateCarree()})
 
 axs[0, 0].set_title("NEMO data")
-_ = axs[0, 0].pcolormesh(lon, lat, norm_vorticity_t, 
+_ = axs[0, 0].pcolormesh(lon_t, lat_t, norm_vorticity_t, 
                          cmap="RdBu_r", shading="auto", 
                          vmin=vmin, vmax=vmax,
                          transform=ccrs.PlateCarree())
 
 axs[0, 1].set_title("Geostrophy")
-im1 = axs[0, 1].pcolormesh(lon, lat, norm_vorticity_geos_t, 
+im1 = axs[0, 1].pcolormesh(lon_t, lat_t, norm_vorticity_geos_t, 
                            cmap="RdBu_r", shading="auto", 
                            vmin=vmin, vmax=vmax,
                            transform=ccrs.PlateCarree())
 
-_ = axs[1, 0].pcolormesh(lon, lat, magnitude, 
+_ = axs[1, 0].pcolormesh(lon_t, lat_t, magnitude, 
                          shading="auto", 
                          vmin=mmin, vmax=mmax,
                          transform=ccrs.PlateCarree())
 
-im2 = axs[1, 1].pcolormesh(lon, lat, tools.compute_magnitude(u_geos, v_geos), 
+im2 = axs[1, 1].pcolormesh(lon_t, lat_t, kinematics.magnitude(u_geos, v_geos, interpolate=True), 
                            shading="auto", 
                            vmin=mmin, vmax=mmax,
                            transform=ccrs.PlateCarree())
@@ -196,9 +205,12 @@ cbar_ax2.set_title("$\\vert\\vert \\vec{u} \\vert\\vert$")
 
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_14_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_16_0.png?raw=true)
     
+
 
 ## Cyclogeostrophic balance
 
@@ -211,20 +223,20 @@ Or designed using a more refined strategy:
 
 
 ```python
-lr_scheduler = optax.exponential_decay(1e-2, 200, .5)
-base_optim = optax.sgd(learning_rate=lr_scheduler)
-base_optim = optax.sgd(learning_rate=lr_scheduler)
-optim = optax.chain(optax.clip(1), base_optim)
+lr_scheduler = optax.exponential_decay(1e-2, 200, .5)  # decrease the learning rate
+optim = optax.sgd(learning_rate=lr_scheduler)  # basic SGD works nicely
+optim = optax.chain(optax.clip(1), optim)  # prevent updates from exploding
 ```
+
+As for the `geostrophy`, the `cyclogeostrophy` function can return the U and V points in addition to the velocity components. 
+If specifying `return_geos=True`, the function also returns the geostrophic velocity.
+Lastly, it is possible to get the evaluation of the cyclogeostrophic imbalance at each iteration by passing `return_losses=True`.
 
 
 ```python
-u_var, v_var, losses_var = cyclogeostrophy(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v, 
-                                           return_losses=True)
+u_var, v_var, losses_var = cyclogeostrophy(ssh, lat_t, lon_t, mask, optim=optim, return_geos=False, return_grids=False, return_losses=True)
 
-norm_vorticity_var = tools.compute_norm_vorticity(u_var, v_var, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v)
-norm_vorticity_var_t = tools.interpolate_south_west(norm_vorticity_var, axis=0, neuman=False)
-norm_vorticity_var_t = tools.interpolate_south_west(norm_vorticity_var_t, axis=1, neuman=False)
+norm_vorticity_var_t = kinematics.normalized_relative_vorticity(u_var, v_var, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True)
 ```
 
 #### Comparison to NEMO's velocities
@@ -235,21 +247,21 @@ fig, axs = plt.subplots(2, 2, figsize=get_figsize(1, 20/6),
                         subplot_kw={"projection": ccrs.PlateCarree()})
 
 axs[0, 0].set_title("NEMO data")
-_ = axs[0, 0].pcolormesh(lon, lat, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
+_ = axs[0, 0].pcolormesh(lon_t, lat_t, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
                          vmin=vmin, vmax=vmax,
                          transform=ccrs.PlateCarree())
 
 axs[0, 1].set_title("Variational cyclogeostrophy")
-im1 = axs[0, 1].pcolormesh(lon, lat, norm_vorticity_var_t, cmap="RdBu_r", shading="auto", 
+im1 = axs[0, 1].pcolormesh(lon_t, lat_t, norm_vorticity_var_t, cmap="RdBu_r", shading="auto", 
                           vmin=vmin, vmax=vmax,
                           transform=ccrs.PlateCarree())
 
-_ = axs[1, 0].pcolormesh(lon, lat, magnitude, 
+_ = axs[1, 0].pcolormesh(lon_t, lat_t, magnitude, 
                          shading="auto", 
                          vmin=mmin, vmax=mmax,
                          transform=ccrs.PlateCarree())
 
-im2 = axs[1, 1].pcolormesh(lon, lat, tools.compute_magnitude(u_var, v_var), 
+im2 = axs[1, 1].pcolormesh(lon_t, lat_t, kinematics.magnitude(u_var, v_var, interpolate=True), 
                            shading="auto", 
                            vmin=mmin, vmax=mmax,
                            transform=ccrs.PlateCarree())
@@ -269,13 +281,16 @@ ax3 = fig.add_axes([0.73, 0.3, 0.27, 0.4])
 ax3.set_title("Cyclogeostrophic disequilibrium - $J(\\vec{u}_c^{(n)})$")
 ax3.set_xlabel("step")
 ax3.set_ylabel("disequilibrium")
-ax3.plot(losses_var[:np.argmin(losses_var)+10])
+ax3.plot(losses_var)
 
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_20_0.png?raw=true)
-   
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_23_0.png?raw=true)
+    
+
 
 ### Iterative method
 
@@ -283,12 +298,10 @@ We use the same function, but with the argument `method="iterative"`.
 
 
 ```python
-u_iterative, v_iterative, losses_it = cyclogeostrophy(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v, 
-                                                      method="iterative", return_losses=True)
+u_iterative, v_iterative, losses_it = cyclogeostrophy(ssh, lat_t, lon_t, mask, method="iterative", 
+                                                      return_geos=False, return_grids=False, return_losses=True)
 
-norm_vorticity_iterative = tools.compute_norm_vorticity(u_iterative, v_iterative, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v)
-norm_vorticity_iterative_t = tools.interpolate_south_west(norm_vorticity_iterative, axis=0, neuman=False)
-norm_vorticity_iterative_t = tools.interpolate_south_west(norm_vorticity_iterative_t, axis=1, neuman=False)
+norm_vorticity_iterative_t = kinematics.normalized_relative_vorticity(u_iterative, v_iterative, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True)
 ```
 
 #### Comparison to NEMO's velocities
@@ -299,21 +312,21 @@ fig, axs = plt.subplots(2, 2, figsize=get_figsize(1, 20/6),
                         subplot_kw={"projection": ccrs.PlateCarree()})
 
 axs[0, 0].set_title("NEMO data")
-_ = axs[0, 0].pcolormesh(lon, lat, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
+_ = axs[0, 0].pcolormesh(lon_t, lat_t, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
                          vmin=vmin, vmax=vmax,
                          transform=ccrs.PlateCarree())
 
 axs[0, 1].set_title("Iterative cyclogeostrophy")
-im1 = axs[0, 1].pcolormesh(lon, lat, norm_vorticity_iterative_t, cmap="RdBu_r", shading="auto", 
+im1 = axs[0, 1].pcolormesh(lon_t, lat_t, norm_vorticity_iterative_t, cmap="RdBu_r", shading="auto", 
                            vmin=vmin, vmax=vmax,
                            transform=ccrs.PlateCarree())
 
-_ = axs[1, 0].pcolormesh(lon, lat, magnitude, 
+_ = axs[1, 0].pcolormesh(lon_t, lat_t, magnitude, 
                          shading="auto", 
                          vmin=mmin, vmax=mmax,
                          transform=ccrs.PlateCarree())
 
-im2 = axs[1, 1].pcolormesh(lon, lat, tools.compute_magnitude(u_iterative, v_iterative), 
+im2 = axs[1, 1].pcolormesh(lon_t, lat_t, kinematics.magnitude(u_iterative, v_iterative, interpolate=True), 
                            shading="auto", 
                            vmin=mmin, vmax=mmax,
                            transform=ccrs.PlateCarree())
@@ -337,9 +350,12 @@ ax3.plot(losses_it)
 
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_24_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_27_0.png?raw=true)
     
+
 
 ### Iterative method, with filter
 
@@ -347,12 +363,10 @@ We use the same function, but with the arguments `method="iterative"`, and `use_
 
 
 ```python
-u_it_filter, v_it_filter, losses_it_filter = cyclogeostrophy(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v, 
-                                                             method="iterative", use_res_filter=True, return_losses=True)
+u_it_filter, v_it_filter, losses_it_filter = cyclogeostrophy(ssh, lat_t, lon_t, mask, method="iterative", use_res_filter=True, 
+                                                             return_geos=False, return_grids=False, return_losses=True)
 
-norm_vorticity_it_filter = tools.compute_norm_vorticity(u_it_filter, v_it_filter, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v)
-norm_vorticity_it_filter_t = tools.interpolate_south_west(norm_vorticity_it_filter, axis=0, neuman=False)
-norm_vorticity_it_filter_t = tools.interpolate_south_west(norm_vorticity_it_filter_t, axis=1, neuman=False)
+norm_vorticity_it_filter_t = kinematics.normalized_relative_vorticity(u_it_filter, v_it_filter, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True)
 ```
 
 #### Comparison to NEMO's currents
@@ -363,21 +377,21 @@ fig, axs = plt.subplots(2, 2, figsize=get_figsize(1, 20/6),
                         subplot_kw={"projection": ccrs.PlateCarree()})
 
 axs[0, 0].set_title("NEMO data")
-_ = axs[0, 0].pcolormesh(lon, lat, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
+_ = axs[0, 0].pcolormesh(lon_t, lat_t, norm_vorticity_t, cmap="RdBu_r", shading="auto", 
                          vmin=vmin, vmax=vmax,
                          transform=ccrs.PlateCarree())
 
 axs[0, 1].set_title("Iterative (filter) cyclogeostrophy")
-im1 = axs[0, 1].pcolormesh(lon, lat, norm_vorticity_it_filter_t, cmap="RdBu_r", shading="auto", 
+im1 = axs[0, 1].pcolormesh(lon_t, lat_t, norm_vorticity_it_filter_t, cmap="RdBu_r", shading="auto", 
                            vmin=vmin, vmax=vmax,
                            transform=ccrs.PlateCarree())
 
-_ = axs[1, 0].pcolormesh(lon, lat, magnitude, 
+_ = axs[1, 0].pcolormesh(lon_t, lat_t, magnitude, 
                          shading="auto", 
                          vmin=mmin, vmax=mmax,
                          transform=ccrs.PlateCarree())
 
-im2 = axs[1, 1].pcolormesh(lon, lat, tools.compute_magnitude(u_it_filter, v_it_filter), 
+im2 = axs[1, 1].pcolormesh(lon_t, lat_t, kinematics.magnitude(u_it_filter, v_it_filter, interpolate=True), 
                            shading="auto", 
                            vmin=mmin, vmax=mmax,
                            transform=ccrs.PlateCarree())
@@ -401,19 +415,22 @@ ax3.plot(losses_it_filter)
 
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_28_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_31_0.png?raw=true)
     
+
 
 ## Overall quantitative comparison
 
 
 ```python
 percentiles = np.linspace(0, 1, 1000)
-vorticity_percentile = np.quantile(norm_vorticity[~np.isnan(norm_vorticity)], percentiles)
-vorticity_percentile_geos = np.quantile(norm_vorticity_geos[~np.isnan(norm_vorticity_geos)], percentiles)
-vorticity_percentile_var = np.quantile(norm_vorticity_var[~np.isnan(norm_vorticity_var)], percentiles)
-vorticity_percentile_iterative = np.quantile(norm_vorticity_iterative[~np.isnan(norm_vorticity_iterative)], percentiles)
+vorticity_percentile = np.quantile(norm_vorticity_t[~np.isnan(norm_vorticity_t)], percentiles)
+vorticity_percentile_geos = np.quantile(norm_vorticity_geos_t[~np.isnan(norm_vorticity_geos_t)], percentiles)
+vorticity_percentile_var = np.quantile(norm_vorticity_var_t[~np.isnan(norm_vorticity_var_t)], percentiles)
+vorticity_percentile_iterative = np.quantile(norm_vorticity_iterative_t[~np.isnan(norm_vorticity_iterative_t)], percentiles)
 
 fig = plt.figure(figsize=get_figsize(.5))
 ax = fig.add_subplot(1, 1, 1)
@@ -438,5 +455,9 @@ ax.set_ylim((-2, 2))
 
 plt.show()
 ```
- 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_30_0.png?raw=true)
+
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/alboran_sea/output_33_0.png?raw=true)
+    
+

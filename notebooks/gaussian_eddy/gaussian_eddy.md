@@ -7,9 +7,14 @@ import numpy as np
 
 from jaxparrow.cyclogeostrophy import _iterative, _variational
 from jaxparrow.geostrophy import _geostrophy
+from jaxparrow.tools.kinematics import advection, magnitude
+from jaxparrow.tools.operators import interpolation
 
 sys.path.extend([os.path.join(os.path.dirname(os.getcwd()), "tests")])
-from tests import gaussian_eddy as ge
+from tests import gaussian_eddy as ge  # noqa
+
+%reload_ext autoreload
+%autoreload 2
 ```
 
 # Gaussian eddy
@@ -33,7 +38,12 @@ dxy = 3e3
 
 
 ```python
-X, Y, R, dXY, coriolis_factor, ssh, u_geos, v_geos, u_cyclo, v_cyclo = ge.simulate_gaussian_eddy(R0, dxy, ETA0, LAT)
+X, Y, R, dXY, coriolis_factor, ssh, u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t, = ge.simulate_gaussian_eddy(
+    R0, 
+    dxy, 
+    ETA0, 
+    LAT
+)
 ```
 
 We just make sure that the grids are correct.
@@ -50,9 +60,12 @@ plt.colorbar(im, ax=ax2)
 plt.show()
 ```
 
+
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_6_0.png?raw=true)
     
+
+
 
 ```python
 _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
@@ -65,13 +78,15 @@ plt.colorbar(im, ax=ax2)
 plt.show()
 ```
 
+
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_7_0.png?raw=true)
     
 
-## Geostrophic azimuthal velocity
 
-### Simulated
+## Geostrophy
+
+### Analytical
 
 $$u_g = 2y \frac{g \eta_0}{f R_0^2} \exp^{-(r/R_0)^2} = 2y \frac{g \eta}{f R_0^2}$$
 
@@ -79,93 +94,118 @@ $$v_g = -2x \frac{g \eta_0}{f R_0^2} \exp^{-(r/R_0)^2} = -2x \frac{g \eta}{f R_0
 
 
 ```python
-azim_geos = ge.compute_azimuthal_magnitude(u_geos, v_geos)
-u_geos_t, v_geos_t = ge.reinterpolate(u_geos, axis=1), ge.reinterpolate(v_geos, axis=0)
+azim_geos = magnitude(u_geos_t, v_geos_t, interpolate=False)
 ```
 
+
 ```python
-ax = plt.subplot()
-ax.set_title("geos")
-im = ax.pcolormesh(X, Y, azim_geos, shading="auto")
-plt.colorbar(im, ax=ax)
-ax.quiver(X, Y, u_geos_t, v_geos_t, color='k')
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_geos_t, shading="auto")
+plt.colorbar(im, ax=ax1)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_geos_t, shading="auto")
+plt.colorbar(im, ax=ax2)
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_geos, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_geos_t[::5, ::5], v_geos_t[::5, ::5], color='k')
 plt.show()
 ```
+
 
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_11_0.png?raw=true)
     
 
 
+
 ```python
 ax = plt.subplot()
+ax.set_title("analytical geostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_geos (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_geos.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_geos).flatten().argmax()], 
           ymin=azim_geos.min(), ymax=azim_geos.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
 
+
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_12_0.png?raw=true)
     
 
-### Geostrophic balance
+
+### Numerical
 
 $f\mathbf{k} \times \mathbf{u_g} = -g \nabla \eta$
 
 
 ```python
-u_geos_est, v_geos_est = _geostrophy(ssh, dXY, dXY, coriolis_factor, coriolis_factor)
-azim_geos_est = ge.compute_azimuthal_magnitude(u_geos_est, v_geos_est)
-u_geos_est_t, v_geos_est_t = ge.reinterpolate(u_geos_est, axis=1), ge.reinterpolate(v_geos_est, axis=0)
+u_geos_est, v_geos_est = _geostrophy(ssh, dXY, dXY, coriolis_factor)
+
+u_geos_est_t = interpolation(u_geos_est, axis=1, padding="left")
+v_geos_est_t = interpolation(v_geos_est, axis=0, padding="left")
+
+azim_geos_est = magnitude(u_geos_est_t, v_geos_est_t, interpolate=False)
 ```
 
 
 ```python
-vmax = np.max([azim_geos, azim_geos_est])
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-ax1.set_title("geos")
-im = ax1.pcolormesh(X, Y, azim_geos, shading="auto", vmin=0, vmax=vmax)
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_geos_est_t, shading="auto")
 plt.colorbar(im, ax=ax1)
-ax1.quiver(X, Y, u_geos_t, v_geos_t, color='k')
-ax2.set_title("geos_est")
-im = ax2.pcolormesh(X, Y, azim_geos_est, shading="auto", vmin=0, vmax=vmax)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_geos_est_t, shading="auto")
 plt.colorbar(im, ax=ax2)
-ax2.quiver(X, Y, u_geos_est_t, v_geos_est_t, color='k')
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_geos_est, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_geos_est_t[::5, ::5], v_geos_est_t[::5, ::5], color='k')
 plt.show()
 ```
+
 
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_15_0.png?raw=true)
     
 
+
+
 ```python
 ax = plt.subplot()
+ax.set_title("numerical geostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_geos_est (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_geos_est.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_geos_est).flatten().argmax()], 
           ymin=azim_geos_est.min(), ymax=azim_geos_est.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
 
+
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_16_0.png?raw=true)
     
 
+
+
 ```python
-ge.compute_rmse(u_geos, u_geos_est), ge.compute_rmse(v_geos, v_geos_est)
+ge.compute_rmse(u_geos_t, u_geos_est_t), ge.compute_rmse(v_geos_t, v_geos_est_t)
 ```
 
 
-    (0.0030672674, 0.0030672674)
+
+
+    (Array(0.00083074, dtype=float32), Array(0.00083074, dtype=float32))
+
 
 
 ## Cyclogeostrophic azimuthal velocity
 
-### Gradient wind analytical solution
+### Analytical
 
 $$V_{gr}=\frac{2V_g}{1+\sqrt{1+4V_g/(fr)}}$$
 
@@ -174,88 +214,124 @@ $$v_{gr} = v_g - cos(\theta) \frac{V_{gr}^2}{fr}$$
 
 
 ```python
-azim_cyclo = ge.compute_azimuthal_magnitude(u_cyclo, v_cyclo)
-u_cyclo_t, v_cyclo_t = ge.reinterpolate(u_cyclo, axis=1), ge.reinterpolate(v_cyclo, axis=0)
+azim_cyclo = magnitude(u_cyclo_t, v_cyclo_t, interpolate=False)
 ```
 
 
 ```python
-ax = plt.subplot()
-ax.set_title("cyclo")
-im = ax.pcolormesh(X, Y, azim_cyclo, shading="auto")
-plt.colorbar(im, ax=ax)
-ax.quiver(X, Y, u_cyclo_t, v_cyclo_t, color='k')
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_cyclo_t, shading="auto")
+plt.colorbar(im, ax=ax1)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_cyclo_t, shading="auto")
+plt.colorbar(im, ax=ax2)
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_cyclo, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_cyclo_t[::5, ::5], v_cyclo_t[::5, ::5], color='k')
 plt.show()
 ```
+
 
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_21_0.png?raw=true)
     
 
+
+
 ```python
 ax = plt.subplot()
+ax.set_title("analytical cyclogeostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_cyclo (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_cyclo.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_cyclo).flatten().argmax()], 
           ymin=azim_cyclo.min(), ymax=azim_cyclo.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
 
+
     
 ![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_22_0.png?raw=true)
     
 
-### Variational estimation
+
+### Numerical
 
 $\mathbf{u} - \frac{\mathbf{k}}{f} \times (\mathbf{u} \cdot \nabla \mathbf{u}) = \mathbf{u_g}$
 
 
 ```python
-u_cyclo_est, v_cyclo_est = _variational(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, 
-                                        2000, "sgd", None, False)
-azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
-u_cyclo_est_t, v_cyclo_est_t = ge.reinterpolate(u_cyclo_est, axis=1), ge.reinterpolate(v_cyclo_est, axis=0)
+u_geos_u = interpolation(u_geos_t, axis=1, padding="right")
+v_geos_v = interpolation(v_geos_t, axis=0, padding="right")
+```
+
+#### Variational estimation
+
+
+```python
+u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+                                           coriolis_factor, coriolis_factor,
+                                           n_it=20, optim="sgd", optim_kwargs=None,
+                                           return_losses=False)
+
+u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+
+azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
 
 
 ```python
-vmax = np.max([azim_cyclo, azim_cyclo_est])
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-ax1.set_title("cyclo")
-im = ax1.pcolormesh(X, Y, azim_cyclo, shading="auto", vmin=0, vmax=vmax)
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax1)
-ax1.quiver(X, Y, u_cyclo_t, v_cyclo_t, color='k')
-ax2.set_title("cyclo_est")
-im = ax2.pcolormesh(X, Y, azim_cyclo_est, shading="auto", vmin=0, vmax=vmax)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax2)
-ax2.quiver(X, Y, u_cyclo_est_t, v_cyclo_est_t, color='k')
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_cyclo_est, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_cyclo_est_t[::5, ::5], v_cyclo_est_t[::5, ::5], color='k')
 plt.show()
 ```
 
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_25_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_27_0.png?raw=true)
+    
+
 
 
 ```python
 ax = plt.subplot()
+ax.set_title("variational cyclogeostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_cyclo (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
+
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_26_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_28_0.png?raw=true)
     
 
+
+
 ```python
-ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
+ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_est_t)
 ```
 
 
-    (0.003272222, 0.003272222)
+
+
+    (Array(0.00273015, dtype=float32), Array(0.00273015, dtype=float32))
+
 
 
 ### Iterative estimation
@@ -268,51 +344,68 @@ Use of a convolution filter when computing the residuals.
 
 
 ```python
-u_cyclo_est, v_cyclo_est = _iterative(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, None, None,
-                                      20, 0.01, "same", True, 3, False)
-azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
-u_cyclo_est_t, v_cyclo_est_t = ge.reinterpolate(u_cyclo_est, axis=1), ge.reinterpolate(v_cyclo_est, axis=0)
+u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+                                         coriolis_factor, coriolis_factor, mask=None,
+                                         n_it=20, res_eps=0.01, res_init="same", 
+                                         use_res_filter=True, res_filter_size=3, 
+                                         return_losses=False)
+
+u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+
+azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
 
 
 ```python
-vmax = np.max([azim_cyclo, azim_cyclo_est])
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-ax1.set_title("cyclo")
-im = ax1.pcolormesh(X, Y, azim_cyclo, shading="auto", vmin=0, vmax=vmax)
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax1)
-ax1.quiver(X, Y, u_cyclo_t, v_cyclo_t, color='k')
-ax2.set_title("cyclo_est")
-im = ax2.pcolormesh(X, Y, azim_cyclo_est, shading="auto", vmin=0, vmax=vmax)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax2)
-ax2.quiver(X, Y, u_cyclo_est_t, v_cyclo_est_t, color='k')
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_cyclo_est, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_cyclo_est_t[::5, ::5], v_cyclo_est_t[::5, ::5], color='k')
 plt.show()
 ```
 
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_31_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_33_0.png?raw=true)
     
+
+
 
 ```python
 ax = plt.subplot()
+ax.set_title("iterative (filter) cyclogeostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_cyclo (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
 
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_32_0.png?raw=true)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_34_0.png?raw=true)
     
 
+
+
 ```python
-ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
+ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_est_t)
 ```
 
 
-    (0.003091015, 0.003091015)
+
+
+    (Array(0.00295354, dtype=float32), Array(0.00295354, dtype=float32))
+
 
 
 #### Penven
@@ -321,46 +414,66 @@ No convolution filter, original approach.
 
 
 ```python
-u_cyclo_est, v_cyclo_est = _iterative(u_geos, v_geos, dXY, dXY, dXY, dXY, coriolis_factor, coriolis_factor, None, None,
-                                      20, 0.01, "same", False, 3, False)
-azim_cyclo_est = ge.compute_azimuthal_magnitude(u_cyclo_est, v_cyclo_est)
-u_cyclo_est_t, v_cyclo_est_t = ge.reinterpolate(u_cyclo_est, axis=1), ge.reinterpolate(v_cyclo_est, axis=0)
+u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+                                         coriolis_factor, coriolis_factor, mask=None,
+                                         n_it=20, res_eps=0.01, res_init="same", 
+                                         use_res_filter=False, res_filter_size=1, 
+                                         return_losses=False)
+
+u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+
+azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
 
 
 ```python
-vmax = np.max([azim_cyclo, azim_cyclo_est])
-_, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-ax1.set_title("cyclo")
-im = ax1.pcolormesh(X, Y, azim_cyclo, shading="auto", vmin=0, vmax=vmax)
+_, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(19, 5))
+ax1.set_title("U")
+im = ax1.pcolormesh(X, Y, u_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax1)
-ax1.quiver(X, Y, u_cyclo_t, v_cyclo_t, color='k')
-ax2.set_title("cyclo_est")
-im = ax2.pcolormesh(X, Y, azim_cyclo_est, shading="auto", vmin=0, vmax=vmax)
+ax2.set_title("V")
+im = ax2.pcolormesh(X, Y, v_cyclo_est_t, shading="auto")
 plt.colorbar(im, ax=ax2)
-ax2.quiver(X, Y, u_cyclo_est_t, v_cyclo_est_t, color='k')
+ax3.set_title("azimuthal")
+im = ax3.pcolormesh(X, Y, azim_cyclo_est, shading="auto")
+plt.colorbar(im, ax=ax3)
+ax3.quiver(X[::5, ::5], Y[::5, ::5], u_cyclo_est_t[::5, ::5], v_cyclo_est_t[::5, ::5], color='k')
 plt.show()
 ```
 
+
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_36_0.png?raw=true)
-   
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_38_0.png?raw=true)
+    
+
+
 
 ```python
 ax = plt.subplot()
+ax.set_title("iterative cyclogeostrophy")
 ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azim_cyclo (m/s)")
+ax.set_ylabel("azimuthal velocity (m/s)")
 ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
 ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
 plt.show()
 ```
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_37_0.png?raw=true)
+
+    
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_39_0.png?raw=true)
     
 
+
+
 ```python
-ge.compute_rmse(u_cyclo, u_cyclo_est), ge.compute_rmse(v_cyclo, v_cyclo_est)
+ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_est_t)
 ```
 
-    (0.0030908077, 0.0030908077)
+
+
+
+    (Array(0.00295272, dtype=float32), Array(0.00295272, dtype=float32))
+
+
