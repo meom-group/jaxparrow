@@ -1,6 +1,7 @@
-import numpy as np
+import jax
+import jax.numpy as jnp
 
-from jaxparrow.tools import tools
+from jaxparrow.tools import geometry, kinematics
 
 
 def simulate_gaussian_eddy(
@@ -8,85 +9,64 @@ def simulate_gaussian_eddy(
         dxy: float,
         eta0: float,
         latitude: int
-) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-      np.ndarray]:
+) -> [jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array,
+      jax.Array, jax.Array]:
     l0 = r0 * 1.5
-    xy = np.arange(0, l0, dxy)
-    xy = np.concatenate((-xy[::-1][:-1], xy))
-    X, Y = np.meshgrid(xy, xy)
-    R = np.hypot(X, Y)
-    dXY = np.ones_like(X) * dxy
-    coriolis_factor = np.ones_like(R) * tools.compute_coriolis_factor(latitude)
+    xy = jnp.arange(0, l0, dxy)
+    xy = jnp.concatenate((-xy[::-1][:-1], xy))
+    X, Y = jnp.meshgrid(xy, xy)
+    R = jnp.hypot(X, Y)
+    dXY = jnp.ones_like(X) * dxy
+    coriolis_factor = jnp.ones_like(R) * geometry.compute_coriolis_factor(latitude)  # noqa
 
     ssh = simulate_gaussian_ssh(r0, eta0, R)
-    u_geos, v_geos = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
-    u_cyclo, v_cyclo = simulate_gaussian_cyclo(r0, np.arctan2(Y, X), u_geos, v_geos, coriolis_factor)
+    u_geos_t, v_geos_t = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
+    u_cyclo_t, v_cyclo_t = simulate_gaussian_cyclo(r0, jnp.arctan2(Y, X), u_geos_t, v_geos_t, coriolis_factor)
 
-    return X, Y, R, dXY, coriolis_factor, ssh, u_geos, v_geos, u_cyclo, v_cyclo
+    return (X, Y, R, dXY, coriolis_factor, ssh,
+            u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t)
 
 
 def simulate_gaussian_ssh(
         r0: float,
         eta0: float,
-        R: np.ndarray
-) -> np.ndarray:
-    return eta0 * np.exp(-(R / r0)**2)
+        R: jax.Array
+) -> jax.Array:
+    return eta0 * jnp.exp(-(R / r0)**2)
 
 
 def simulate_gaussian_geos(
         r0: float,
-        X: np.ndarray,
-        Y: np.ndarray,
-        ssh: np.ndarray,
-        coriolis_factor: np.ndarray
-) -> [np.ndarray, np.ndarray]:
+        X: jax.Array,
+        Y: jax.Array,
+        ssh: jax.Array,
+        coriolis_factor: jax.Array
+) -> [jax.Array, jax.Array]:
     def f():
-        return 2 * tools.GRAVITY * ssh / (coriolis_factor * r0 ** 2)
+        return 2 * geometry.GRAVITY * ssh / (coriolis_factor * r0 ** 2)
     u_geos = Y * f()
-    v_geos = - X * f()
+    v_geos = -X * f()
     return u_geos, v_geos
 
 
 def simulate_gaussian_cyclo(
         r0: float,
-        theta: np.ndarray,
-        u_geos: np.ndarray,
-        v_geos: np.ndarray,
-        coriolis_factor: np.ndarray
-) -> [np.ndarray, np.ndarray]:
+        theta: jax.Array,
+        u_geos: jax.Array,
+        v_geos: jax.Array,
+        coriolis_factor: jax.Array
+) -> [jax.Array, jax.Array]:
     def f():
         return azim_cyclo**2 / (r0 * coriolis_factor)
-    azim_geos = compute_azimuthal_magnitude(u_geos, v_geos)
-    azim_cyclo = 2 * azim_geos / (1 + np.sqrt(1 + 4 * azim_geos / (coriolis_factor * r0)))
-    u_cyclo = u_geos + np.sin(theta) * f()
-    v_cyclo = v_geos - np.cos(theta) * f()
+    azim_geos = kinematics.magnitude(u_geos, v_geos, interpolate=False)
+    azim_cyclo = 2 * azim_geos / (1 + jnp.sqrt(1 + 4 * azim_geos / (coriolis_factor * r0)))
+    u_cyclo = u_geos + jnp.sin(theta) * f()
+    v_cyclo = v_geos - jnp.cos(theta) * f()
     return u_cyclo, v_cyclo
 
 
-def reinterpolate(
-        f: np.ndarray, axis: int
-) -> np.ndarray:
-    f = np.copy(f)
-    if axis == 0:
-        f[1:, :] = f[:-1, :]
-        f[0, :] = - f[-1, :]  # axis-symmetric
-    elif axis == 1:
-        f[:, 1:] = f[:, :-1]
-        f[:, 0] = - f[:, -1]  # axis-symmetric
-    return f
-
-
-def compute_azimuthal_magnitude(
-        u_component: np.ndarray,
-        v_component: np.ndarray
-) -> np.ndarray:
-    u_component = reinterpolate(u_component, axis=1)
-    v_component = reinterpolate(v_component, axis=0)
-    return np.sqrt(u_component**2 + v_component**2)
-
-
 def compute_rmse(
-        vel: np.ndarray,
-        vel_est: np.ndarray
-) -> np.ndarray:
-    return np.sqrt(np.nanmean((vel - vel_est)**2))
+        y: jax.Array,
+        y_hat: jax.Array
+) -> jax.Array:
+    return jnp.sqrt(jnp.nanmean((y - y_hat)**2))

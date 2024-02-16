@@ -8,7 +8,6 @@ import xarray as xr
 
 from .version import __version__
 from .cyclogeostrophy import cyclogeostrophy
-from .geostrophy import geostrophy
 
 
 def _read_data(
@@ -21,7 +20,7 @@ def _read_data(
     seen_ds = {}
 
     # variable descriptions to be found in the conf file
-    variables = ["mask_ssh", "mask_u", "mask_v", "lon_ssh", "lat_ssh", "ssh", "lon_u", "lat_u", "lon_v", "lat_v"]
+    variables = ["ssh", "lon", "lat", "mask"]
     for var in variables:
         try:
             conf_entry = conf[var]
@@ -70,16 +69,15 @@ def _apply_masks(
         v_geos: np.ndarray,
         u_cyclo: np.ndarray,
         v_cyclo: np.ndarray,
-        mask_u: np.ndarray,
-        mask_v: np.ndarray
+        mask: np.ndarray
 ) -> [np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    def do_apply_mask(arr, mask):
+    def do_apply_mask(arr):
         if mask is not None:
             return ma.masked_array(arr, mask)
         else:
             return arr
-    return (do_apply_mask(u_geos, mask_u), do_apply_mask(v_geos, mask_v),
-            do_apply_mask(u_cyclo, mask_u), do_apply_mask(v_cyclo, mask_v))
+    return (do_apply_mask(u_geos), do_apply_mask(v_geos),
+            do_apply_mask(u_cyclo), do_apply_mask(v_cyclo))
 
 
 def _create_attrs(
@@ -156,19 +154,17 @@ def _main(
 ):
     run_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    mask_ssh, mask_u, mask_v, ssh, lon_ssh, lat_ssh, lon_u, lat_u, lon_v, lat_v, cyclo_kwargs, out_attrs, out_path = (
-        _read_data(conf_path))
+    ssh_t, lon_t, lat_t, mask, cyclo_kwargs, out_attrs, out_path = _read_data(conf_path)
 
-    mask_ssh, mask_u, mask_v = _reverse_masks(mask_ssh, mask_u, mask_v)
+    mask = 1 - mask  # NEMO convention: 1 means marine area ; for ma.masked_array: 1 means masked (i.e. land)
 
-    u_geos, v_geos = geostrophy(ssh, lat_ssh, lon_ssh, lat_u, lat_v, mask_ssh, mask_u, mask_v)
-    u_cyclo, v_cyclo = cyclogeostrophy(u_geos, v_geos, lat_u, lon_u, lat_v, lon_v, mask_u, mask_v,
-                                       **cyclo_kwargs)
+    u_cyclo_u, v_cyclo_v, u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = (
+        cyclogeostrophy(ssh_t, lat_t, lon_t, mask, return_geos=True, **cyclo_kwargs))
 
-    u_geos, v_geos, u_cyclo, v_cyclo = _apply_masks(u_geos, v_geos, u_cyclo, v_cyclo, mask_u, mask_v)
+    u_cyclo_u, v_cyclo_v, u_geos_u, v_geos_v = _apply_masks(u_cyclo_u, v_cyclo_v, u_geos_u, v_geos_v, mask)
 
-    _write_data(u_geos, v_geos, u_cyclo, v_cyclo, lat_u, lon_u, lat_v, lon_v, conf_path, out_attrs, run_datetime,
-                out_path)
+    _write_data(u_cyclo_u, v_cyclo_v, u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v, conf_path, out_attrs,
+                run_datetime, out_path)
 
 
 def main():

@@ -1,11 +1,7 @@
-from typing import Tuple
-
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
-from .tools import tools
-
-__all__ = ["geostrophy"]
+from .tools import geometry, operators, sanitize
 
 
 # =============================================================================
@@ -13,98 +9,100 @@ __all__ = ["geostrophy"]
 # =============================================================================
 
 def geostrophy(
-        ssh: Float[Array, "lat lon"],
-        lat: Float[Array, "lat lon"],
-        lon: Float[Array, "lat lon"],
-        lat_u: Float[Array, "lat lon"],
-        lat_v: Float[Array, "lat lon"],
-        mask_t: Float[Array, "lat lon"] = None,
-        mask_u: Float[Array, "lat lon"] = None,
-        mask_v: Float[Array, "lat lon"] = None
-) -> Tuple[Float[Array, "lat lon"], Float[Array, "lat lon"]]:
-    """Computes the geostrophic balance
-
-    :param ssh: Sea Surface Height (SSH)
-    :type ssh: Float[Array, "lat lon"]
-    :param lat: latitude of the T points
-    :type lat: Float[Array, "lat lon"]
-    :param lon: longitude of the T points
-    :type lon: Float[Array, "lat lon"]
-    :param lat_u: latitude of the U points
-    :type lat_u: Float[Array, "lat lon"]
-    :param lat_v: latitude of the V points
-    :type lat_v: Float[Array, "lat lon"]
-    :param mask_t: mask to apply at T points, 1 or True stands for masked, defaults to None
-    :type mask_t: Float[Array, "lat lon"], optional
-    :param mask_u: mask to apply at U points, 1 or True stands for masked, defaults to None
-    :type mask_u: Float[Array, "lat lon"], optional
-    :param mask_v: mask to apply at V points, 1 or True stands for masked, defaults to None
-    :type mask_v: Float[Array, "lat lon"], optional
-
-    :returns: U and V geostrophic velocities
-    :rtype: Tuple[Float[Array, "lat lon"], Float[Array, "lat lon"]]
+        ssh_t: Float[Array, "lat lon"],
+        lat_t: Float[Array, "lat lon"],
+        lon_t: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"] = None,
+        return_grids: bool = True
+) -> [Float[Array, "lat lon"], ...]:
     """
-    if mask_u is None:
-        mask_u = mask_t
-    if mask_v is None:
-        mask_v = mask_t
+    Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
 
-    # Computing spatial steps and Coriolis factors
-    dx_ssh, dy_ssh = tools.compute_spatial_step(lat, lon)
-    coriolis_factor_u = tools.compute_coriolis_factor(lat_u)
-    coriolis_factor_v = tools.compute_coriolis_factor(lat_v)
+    The geostrophic SSC velocity field is computed on a C-grid, following NEMO convention [1]_.
 
-    # Handling spurious and masked data
-    ssh = tools.sanitise_data(ssh, jnp.nan, mask_t)  # avoid spurious velocities near the coast
-    dx_ssh = tools.sanitise_data(dx_ssh, jnp.nan, mask_t)
-    dy_ssh = tools.sanitise_data(dy_ssh, jnp.nan, mask_t)
-    coriolis_factor_u = tools.sanitise_data(coriolis_factor_u, jnp.nan, mask_u)
-    coriolis_factor_v = tools.sanitise_data(coriolis_factor_v, jnp.nan, mask_v)
+    Parameters
+    ----------
+    ssh_t : Float[Array, "lat lon"]
+        SSH field (on the T grid)
+    lat_t : Float[Array, "lat lon"]
+        Latitudes of the T grid
+    lon_t : Float[Array, "lat lon"]
+        Longitudes of the T grid
+    mask : Float[Array, "lat lon"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
-    u_geos, v_geos = _geostrophy(ssh, dx_ssh, dy_ssh, coriolis_factor_u, coriolis_factor_v)
+        If not provided, inferred from ``ssh_t`` `nan` values
+    return_grids : bool, optional
+        If `True`, returns the U and V grids.
 
-    # Handling masked data
-    u_geos = tools.sanitise_data(u_geos, jnp.nan, mask_u)
-    v_geos = tools.sanitise_data(v_geos, jnp.nan, mask_v)
+        Defaults to `True`
 
-    return u_geos, v_geos
+    Returns
+    -------
+    u_geos_u : Float[Array, "lat lon"]
+        U component of the geostrophic SSC velocity field (on the U grid)
+    v_geos_v : Float[Array, "lat lon"]
+        V component of the geostrophic SSC velocity field (on the V grid)
+    lat_u : Float[Array, "lat lon"]
+        Latitudes of the U grid, if ``return_grids=True``
+    lon_u : Float[Array, "lat lon"]
+        Longitudes of the U grid, if ``return_grids=True``
+    lat_v : Float[Array, "lat lon"]
+        Latitudes of the V grid, if ``return_grids=True``
+    lon_v : Float[Array, "lat lon"]
+        Longitudes of the V grid, if ``return_grids=True``
+    """
+    # Make sure the mask is initialized
+    mask = sanitize.init_mask(ssh_t, mask)
+
+    # Compute spatial steps and Coriolis factors
+    dx_t, dy_t = geometry.compute_spatial_step(lat_t, lon_t)
+    coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
+
+    # Handle spurious and masked data
+    ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, mask)  # avoid spurious velocities near the coast
+    dx_t = sanitize.sanitize_data(dx_t, jnp.nan, mask)
+    dy_t = sanitize.sanitize_data(dy_t, jnp.nan, mask)
+    coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, mask)
+
+    u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t)
+
+    # Handle masked data
+    u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, mask)
+    v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, mask)
+
+    # Compute U and V grids
+    lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
+
+    res = (u_geos_u, v_geos_v)
+    if return_grids:
+        res = res + (lat_u, lon_u, lat_v, lon_v)
+
+    return res
 
 
 def _geostrophy(
-        ssh: Float[Array, "lat lon"],
-        dx_ssh: Float[Array, "lat lon"],
-        dy_ssh: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"]
-) -> Tuple[Float[Array, "lat lon"], Float[Array, "lat lon"]]:
-    """Computes the geostrophic balance (internal)
+        ssh_t: Float[Array, "lat lon"],
+        dx_t: Float[Array, "lat lon"],
+        dy_t: Float[Array, "lat lon"],
+        coriolis_factor_t: Float[Array, "lat lon"]
+) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    # Compute the gradient of the ssh
+    ssh_dx_u = operators.derivative(ssh_t, dx_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    ssh_dy_v = operators.derivative(ssh_t, dy_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
-    :param ssh: Sea Surface Height (SSH)
-    :type ssh: Float[Array, "lat lon"]
-    :param dx_ssh: spatial steps along x at T points
-    :type dx_ssh: Float[Array, "lat lon"]
-    :param dy_ssh: spatial steps along y at T points
-    :type dy_ssh: Float[Array, "lat lon"]
-    :param coriolis_factor_u: coriolis factor at U points
-    :type coriolis_factor_u: Float[Array, "lat lon"]
-    :param coriolis_factor_v: coriolis factor at V points
-    :type coriolis_factor_v: Float[Array, "lat lon"]
+    # Interpolate the data
+    ssh_dy_t = operators.interpolation(ssh_dy_v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    ssh_dy_u = operators.interpolation(ssh_dy_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
-    :returns: U and V geostrophic velocities
-    :rtype: Tuple[Float[Array, "lat lon"], Float[Array, "lat lon"]]
-    """
-    # Computing the gradient of the ssh
-    grad_ssh_x, grad_ssh_y = tools.compute_gradient(ssh, dx_ssh, dy_ssh)
+    ssh_dx_t = operators.interpolation(ssh_dx_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    ssh_dx_v = operators.interpolation(ssh_dx_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
-    # Interpolation of the data (moving the grad into the u and v position)  # TODO: not sure about this
-    grad_ssh_y = tools.interpolate_south_west(grad_ssh_y, axis=0)  # t point
-    grad_ssh_y = tools.interpolate_north_east(grad_ssh_y, axis=1)  # u point
-
-    grad_ssh_x = tools.interpolate_south_west(grad_ssh_x, axis=1)  # t point
-    grad_ssh_x = tools.interpolate_north_east(grad_ssh_x, axis=0)  # v point
+    coriolis_factor_u = operators.interpolation(coriolis_factor_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    coriolis_factor_v = operators.interpolation(coriolis_factor_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     # Computing the geostrophic velocities
-    u_geos = - tools.GRAVITY * grad_ssh_y / coriolis_factor_u
-    v_geos = tools.GRAVITY * grad_ssh_x / coriolis_factor_v
+    u_geos_u = - geometry.GRAVITY * ssh_dy_u / coriolis_factor_u  # U(i)
+    v_geos_v = geometry.GRAVITY * ssh_dx_v / coriolis_factor_v  # V(j)
 
-    return u_geos, v_geos
+    return u_geos_u, v_geos_v

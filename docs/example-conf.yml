@@ -10,12 +10,12 @@
 # file_path and var_name are required, index is optional
 
 # longitude grid of the SSH
-lon_ssh:
+lon:
   file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "nav_lon"
 
 # latitude grid of the SSH
-lat_ssh:
+lat:
   file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "nav_lat"
 
@@ -24,26 +24,6 @@ ssh:
   file_path: "notebooks/data/alboransea_sossheig.nc"
   var_name: "sossheig"
   index: [0]
-
-# longitude grid of the U component
-lon_u:
-  file_path: "notebooks/data/alboransea_sozocrtx.nc"
-  var_name: "nav_lon"
-
-# latitude grid of the U component
-lat_u:
-  file_path: "notebooks/data/alboransea_sozocrtx.nc"
-  var_name: "nav_lat"
-
-# longitude grid of the V component
-lon_v:
-  file_path: "notebooks/data/alboransea_somecrty.nc"
-  var_name: "nav_lon"
-
-# latitude grid of the V component
-lat_v:
-  file_path: "notebooks/data/alboransea_somecrty.nc"
-  var_name: "nav_lat"
 
 # ------------------------
 # Output Dataset full path
@@ -62,25 +42,13 @@ out_path: "notebooks/data/out.nc"
 # Input Dataset variables
 # -----------------------
 # file_path and var_name are required, index is optional
-# mask arrays are expected to be boolean or numeric, with True (or 1) for valid cells and False (or 0) for invalid ones.
+# mask arrays are expected to be boolean or numeric, with True (or 1) for marine pixels and False (or 0) for land ones.
 
 # mask of the SSH
-mask_ssh:
+mask:
   file_path: "notebooks/data/mask_alboransea.nc"
   var_name: "tmask"
-  index: [0, 0]  # here we select the first time and elevation elements (optional, depends on the datastructure)
-
-# mask of the U component
-mask_u:
-  file_path: "notebooks/data/mask_alboransea.nc"
-  var_name: "umask"
-  index: [0, 0]
-
-# mask of the V component
-mask_v:
-  file_path: "notebooks/data/mask_alboransea.nc"
-  var_name: "vmask"
-  index: [0, 0]
+  index: [0, 0]  # here we select the first time and elevation elements (optional, depends on the data structure)
 
 # ---------------------------------------
 # Arguments to the cyclogeostrophy method
