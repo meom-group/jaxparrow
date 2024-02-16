@@ -3,6 +3,8 @@ from typing import Literal
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
+from .sanitize import handle_land_boundary
+
 
 def interpolation(
         field: Float[Array, "lat lon"],
@@ -35,13 +37,17 @@ def interpolation(
         Interpolated field
     """
     if axis == 0:
-        midpoint_values = 0.5 * (field[:-1, :] + field[1:, :])
+        field_b, field_f = field[:-1, :], field[1:, :]
+        field_b, field_f = handle_land_boundary(field_b, field_f)
+        midpoint_values = 0.5 * (field_b + field_f)
         if padding == "left":
             field = field.at[1:, :].set(midpoint_values)
         else:  # padding == "right"
             field = field.at[:-1, :].set(midpoint_values)
     else:  # axis == 1
-        midpoint_values = 0.5 * (field[:, :-1] + field[:, 1:])
+        field_b, field_f = field[:, :-1], field[:, 1:]
+        field_b, field_f = handle_land_boundary(field_b, field_f)
+        midpoint_values = 0.5 * (field_b + field_f)
         if padding == "left":
             field = field.at[:, 1:].set(midpoint_values)
         else:
@@ -83,16 +89,18 @@ def derivative(
         Interpolated field
     """
     if axis == 0:
-        midpoint_values = field[1:, :] - field[:-1, :]
+        field_b, field_f = field[:-1, :], field[1:, :]
         if padding == "left":
             pad_width = ((1, 0), (0, 0))
         else:  # padding == "right"
             pad_width = ((0, 1), (0, 0))
     else:  # axis == 1
-        midpoint_values = field[:, 1:] - field[:, :-1]
+        field_b, field_f = field[:, :-1], field[:, 1:]
         if padding == "left":
             pad_width = ((0, 0), (1, 0))
         else:
             pad_width = ((0, 0), (0, 1))
+    field_b, field_f = handle_land_boundary(field_b, field_f)
+    midpoint_values = field_f - field_b
     field = jnp.pad(midpoint_values, pad_width=pad_width, mode="edge") / dxy
     return field

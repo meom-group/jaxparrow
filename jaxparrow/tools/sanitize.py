@@ -58,8 +58,37 @@ def init_mask(
         Initialized (if needed) mask
     """
     if mask is None:
-        mask = jnp.isnan(field)
+        mask = jnp.isfinite(field)
     return mask
+
+
+def handle_land_boundary(
+        field1: Float[Array, "lat lon"],
+        field2: Float[Array, "lat lon"]
+) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    """
+    Replaces the non-finite values of ``field1`` (``field2``) with values of ``field2`` (``field1``), element-wise.
+
+    It allows to introduce less non-finite values when applying grid operators.
+    In such cases, ``field1`` and ``field2`` are left and right shifted versions of a field.
+
+    Parameters
+    ----------
+    field1 : Float[Array, "lat lon"]
+        A field
+    field2 : Float[Array, "lat lon"]
+        Another field
+
+    Returns
+    -------
+    field1 : Float[Array, "lat lon"]
+        A field whose non-finite values have been replaced with the ones from ``field2``
+    field2 : Float[Array, "lat lon"]
+        A field whose non-finite values have been replaced with the ones from ``field1``
+    """
+    field1 = jnp.where(jnp.isfinite(field1), field1, field2)
+    field2 = jnp.where(jnp.isfinite(field2), field2, field1)
+    return field1, field2
 
 
 def sanitize_grid_np(
