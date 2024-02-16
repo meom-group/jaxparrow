@@ -43,3 +43,6 @@ html_theme = "sphinx_rtd_theme"
 html_js_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
 ]
+rst_prolog = """
+:github_url: https://github.com/meom-group/jaxparrow
+"""
