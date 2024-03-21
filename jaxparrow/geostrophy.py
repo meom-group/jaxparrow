@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
@@ -81,6 +82,7 @@ def geostrophy(
     return res
 
 
+@jax.jit
 def _geostrophy(
         ssh_t: Float[Array, "lat lon"],
         dx_t: Float[Array, "lat lon"],

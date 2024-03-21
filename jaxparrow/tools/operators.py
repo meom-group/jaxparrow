@@ -1,5 +1,6 @@
 from typing import Literal
 
+from jax import lax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
@@ -36,22 +37,36 @@ def interpolation(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    if axis == 0:
-        field_b, field_f = field[:-1, :], field[1:, :]
-        field_b, field_f = handle_land_boundary(field_b, field_f)
-        midpoint_values = 0.5 * (field_b + field_f)
-        if padding == "left":
-            field = field.at[1:, :].set(midpoint_values)
-        else:  # padding == "right"
-            field = field.at[:-1, :].set(midpoint_values)
-    else:  # axis == 1
-        field_b, field_f = field[:, :-1], field[:, 1:]
-        field_b, field_f = handle_land_boundary(field_b, field_f)
-        midpoint_values = 0.5 * (field_b + field_f)
-        if padding == "left":
-            field = field.at[:, 1:].set(midpoint_values)
-        else:
-            field = field.at[:, :-1].set(midpoint_values)
+    def axis0(arr, pad_left):
+        arr_b, arr_f = arr[:-1, :], arr[1:, :]
+        arr_b, arr_f = handle_land_boundary(arr_b, arr_f, pad_left)
+        midpoint_values = 0.5 * (arr_b + arr_f)
+        arr = lax.cond(
+            pad_left,
+            lambda operands: operands[0].at[1:, :].set(operands[1]),
+            lambda operands: operands[0].at[:-1, :].set(operands[1]),
+            (arr, midpoint_values)
+        )
+        return arr
+
+    def axis1(arr, pad_left):
+        arr_b, arr_f = arr[:, :-1], arr[:, 1:]
+        arr_b, arr_f = handle_land_boundary(arr_b, arr_f, pad_left)
+        midpoint_values = 0.5 * (arr_b + arr_f)
+        arr = lax.cond(
+            pad_left,
+            lambda operands: operands[0].at[:, 1:].set(operands[1]),
+            lambda operands: operands[0].at[:, :-1].set(operands[1]),
+            (arr, midpoint_values)
+        )
+        return arr
+
+    field = lax.cond(
+        axis == 0,
+        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
+        (field, padding == "left")
+    )
+
     return field
 
 
@@ -88,19 +103,50 @@ def derivative(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    if axis == 0:
-        field_b, field_f = field[:-1, :], field[1:, :]
-        if padding == "left":
-            pad_width = ((1, 0), (0, 0))
-        else:  # padding == "right"
-            pad_width = ((0, 1), (0, 0))
-    else:  # axis == 1
-        field_b, field_f = field[:, :-1], field[:, 1:]
-        if padding == "left":
-            pad_width = ((0, 0), (1, 0))
-        else:
-            pad_width = ((0, 0), (0, 1))
-    field_b, field_f = handle_land_boundary(field_b, field_f)
-    midpoint_values = field_f - field_b
-    field = jnp.pad(midpoint_values, pad_width=pad_width, mode="edge") / dxy
+    def do_interpolate(field_b, field_f, pad_left):
+        field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
+        return field_f - field_b
+
+    def axis0(_field, pad_left):
+        def pad_left_fn(_field_b, _field_f):
+            midpoint_values = do_interpolate(_field_b, _field_f, True)
+            return jnp.pad(midpoint_values, pad_width=((1, 0), (0, 0)), mode="edge") / dxy
+
+        def pad_right_fn(_field_b, _field_f):
+            midpoint_values = do_interpolate(_field_b, _field_f, False)
+            return jnp.pad(midpoint_values, pad_width=((0, 1), (0, 0)), mode="edge") / dxy
+
+        field_b, field_f = _field[:-1, :], _field[1:, :]
+        _field = lax.cond(
+            pad_left,
+            lambda _operands: pad_left_fn(*_operands), lambda _operands: pad_right_fn(*_operands),
+            (field_b, field_f)
+        )
+
+        return _field
+
+    def axis1(_field, pad_left):
+        def pad_left_fn(_field_b, _field_f):
+            midpoint_values = do_interpolate(_field_b, _field_f, True)
+            return jnp.pad(midpoint_values, pad_width=((0, 0), (1, 0)), mode="edge") / dxy
+
+        def pad_right_fn(_field_b, _field_f):
+            midpoint_values = do_interpolate(_field_b, _field_f, False)
+            return jnp.pad(midpoint_values, pad_width=((0, 0), (0, 1)), mode="edge") / dxy
+
+        field_b, field_f = _field[:, :-1], _field[:, 1:]
+        _field = lax.cond(
+            pad_left,
+            lambda _operands: pad_left_fn(*_operands), lambda _operands: pad_right_fn(*_operands),
+            (field_b, field_f)
+        )
+
+        return _field
+
+    field = lax.cond(
+        axis == 0,
+        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
+        (field, padding == "left")
+    )
+
     return field
