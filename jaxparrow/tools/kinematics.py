@@ -65,7 +65,7 @@ def _u_advection_v(
     u_v = interpolation(u_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     u_adv_v = u_v * dudx_v + v_v * dudy_v  # V(j)
-    u_adv_v = sanitize_data(u_adv_v, jnp.nan, mask)
+    u_adv_v = sanitize_data(u_adv_v, 0., mask)
 
     return u_adv_v
 
@@ -87,7 +87,7 @@ def _v_advection_u(
     v_u = interpolation(v_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
     v_adv_u = u_u * dvdx_u + v_u * dvdy_u  # U(i)
-    v_adv_u = sanitize_data(v_adv_u, jnp.nan, mask)
+    v_adv_u = sanitize_data(v_adv_u, 0., mask)
 
     return v_adv_u
 
