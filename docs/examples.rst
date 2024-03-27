@@ -9,3 +9,4 @@ Examples
 
    gaussian_eddy
    alboran_sea
+   duacs_alboran
