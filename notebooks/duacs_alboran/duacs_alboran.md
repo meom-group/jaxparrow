@@ -1,4 +1,4 @@
-# Hands-on `jaxparrow`
+# Hands-on `jaxparrow` with Duacs data
 
 The aim of this notebook is to illustrate how `jaxparrow` can be employed to derive geostrophic **and cyclogeostrophic** currents on a C-grid from Sea Surface Height (SSH) observations.  
 The demo focuses on the **Alboran Sea**, a highly energetic area of the Mediterranean Sea ([Ioannou et al. 2019](https://doi.org/10.1029/2019JC015031)).
