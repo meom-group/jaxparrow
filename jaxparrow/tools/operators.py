@@ -105,13 +105,13 @@ def derivative(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_derivate(field_b, field_f, _dxy, pad_left):
+    def do_derivate(field_b, field_f, pad_left):
         field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
-        return (field_f - field_b) / _dxy
+        return field_f - field_b
 
-    def axis0(_field, _dxy, pad_left):
+    def axis0(_field, pad_left):
         field_b, field_f = _field[:-1, :], _field[1:, :]
-        midpoint_values = do_derivate(field_b, field_f, _dxy, pad_left)
+        midpoint_values = do_derivate(field_b, field_f, pad_left)
 
         _field = lax.cond(
             pad_left,
@@ -122,9 +122,9 @@ def derivative(
 
         return _field
 
-    def axis1(_field, _dxy, pad_left):
+    def axis1(_field, pad_left):
         field_b, field_f = _field[:, :-1], _field[:, 1:]
-        midpoint_values = do_derivate(field_b, field_f, _dxy, pad_left)
+        midpoint_values = do_derivate(field_b, field_f, pad_left)
 
         _field = lax.cond(
             pad_left,
@@ -138,7 +138,7 @@ def derivative(
     field = lax.cond(
         axis == 0,
         lambda operands: axis0(*operands), lambda operands: axis1(*operands),
-        (field, dxy, padding == "left")
+        (field, padding == "left")
     )
 
-    return field
+    return field / dxy
