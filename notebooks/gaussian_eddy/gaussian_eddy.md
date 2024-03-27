@@ -7,8 +7,9 @@ import numpy as np
 
 from jaxparrow.cyclogeostrophy import _iterative, _variational
 from jaxparrow.geostrophy import _geostrophy
-from jaxparrow.tools.kinematics import advection, magnitude
+from jaxparrow.tools.kinematics import magnitude
 from jaxparrow.tools.operators import interpolation
+from jaxparrow.tools.sanitize import init_mask
 
 sys.path.extend([os.path.join(os.path.dirname(os.getcwd()), "tests")])
 from tests import gaussian_eddy as ge  # noqa
@@ -31,7 +32,7 @@ R0 = 50e3
 ETA0 = .1
 LAT = 36
 
-dxy = 3e3
+dxy = 15e3
 ```
 
 ## Simulating the eddy
@@ -265,6 +266,7 @@ $\mathbf{u} - \frac{\mathbf{k}}{f} \times (\mathbf{u} \cdot \nabla \mathbf{u}) =
 ```python
 u_geos_u = interpolation(u_geos_t, axis=1, padding="right")
 v_geos_v = interpolation(v_geos_t, axis=0, padding="right")
+mask = init_mask(u_geos_t)
 ```
 
 #### Variational estimation
@@ -272,7 +274,7 @@ v_geos_v = interpolation(v_geos_t, axis=0, padding="right")
 
 ```python
 u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
-                                           coriolis_factor, coriolis_factor,
+                                           coriolis_factor, coriolis_factor, mask,
                                            n_it=20, optim="sgd", optim_kwargs=None,
                                            return_losses=False)
 
@@ -345,7 +347,7 @@ Use of a convolution filter when computing the residuals.
 
 ```python
 u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
-                                         coriolis_factor, coriolis_factor, mask=None,
+                                         coriolis_factor, coriolis_factor, mask,
                                          n_it=20, res_eps=0.01, res_init="same", 
                                          use_res_filter=True, res_filter_size=3, 
                                          return_losses=False)
@@ -415,7 +417,7 @@ No convolution filter, original approach.
 
 ```python
 u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
-                                         coriolis_factor, coriolis_factor, mask=None,
+                                         coriolis_factor, coriolis_factor, mask,
                                          n_it=20, res_eps=0.01, res_init="same", 
                                          use_res_filter=False, res_filter_size=1, 
                                          return_losses=False)

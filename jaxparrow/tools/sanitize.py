@@ -1,3 +1,4 @@
+from jax import lax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 import numpy as np
@@ -6,8 +7,8 @@ from scipy import interpolate
 
 def sanitize_data(
         arr: Float[Array, "lat lon"],
-        fill_value: float = None,
-        mask: Float[Array, "lat lon"] = None
+        fill_value: float,
+        mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
     """
     Sanitizes data by replacing `nan` with ``fill_value`` and applying ``fill_value`` to the masked area.
@@ -16,22 +17,18 @@ def sanitize_data(
     ----------
     arr : Float[Array, "lat lon"]
         Array to sanitize
-    fill_value : float, optional
-        Value to replace `nan` values and masked area with, defaults to `None` (falls to the mean of ``arr``)
-    mask :  Float[Array, "lat lon"], optional
-        Mask to apply, `1` or `True` for masked, defaults to `None`
+    fill_value : float
+        Value to replace `nan` values and masked area with
+    mask :  Float[Array, "lat lon"]
+        Mask to apply, `1` or `True` for masked
 
     Returns
     -------
     arr : Float[Array, "lat lon"]
         Sanitized array
     """
-    if fill_value is None:
-        fill_value = jnp.nanmean(arr)
-
     arr = jnp.nan_to_num(arr, nan=fill_value, posinf=fill_value, neginf=fill_value)
-    if mask is not None:
-        arr = jnp.where(mask, fill_value, arr)
+    arr = jnp.where(mask, fill_value, arr)
     return arr
 
 
@@ -64,7 +61,8 @@ def init_mask(
 
 def handle_land_boundary(
         field1: Float[Array, "lat lon"],
-        field2: Float[Array, "lat lon"]
+        field2: Float[Array, "lat lon"],
+        pad_left: bool
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
     Replaces the non-finite values of ``field1`` (``field2``) with values of ``field2`` (``field1``), element-wise.
@@ -86,8 +84,12 @@ def handle_land_boundary(
     field2 : Float[Array, "lat lon"]
         A field whose non-finite values have been replaced with the ones from ``field1``
     """
-    field1 = jnp.where(jnp.isfinite(field1), field1, field2)
-    field2 = jnp.where(jnp.isfinite(field2), field2, field1)
+    field1, field2 = lax.cond(
+        pad_left,
+        lambda operands: (jnp.where(jnp.isfinite(operands[0]), operands[0], operands[1]), operands[1]),
+        lambda operands: (operands[0], jnp.where(jnp.isfinite(operands[1]), operands[1], operands[0])),
+        (field1, field2)
+    )
     return field1, field2
 
 
@@ -144,8 +146,8 @@ def sanitize_grid_np(
         return arr.data
 
     # make sure nan are used behind masked pixels (and not 0)
-    lat = sanitize_data(lat, fill_value=jnp.nan, mask=mask)
-    lon = sanitize_data(lon, fill_value=jnp.nan, mask=mask)
+    lat = sanitize_data(lat, jnp.nan, mask)
+    lon = sanitize_data(lon, jnp.nan, mask)
     # fill nan using RBF interpolation
     lat = fill_nan(lat)
     lon = fill_nan(lon)

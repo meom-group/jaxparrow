@@ -12,8 +12,9 @@ def advection(
         dx_u: Float[Array, "lat lon"],
         dy_u: Float[Array, "lat lon"],
         dx_v: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"]
-) -> Float[Array, "lat lon"]:
+        dy_v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
+) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
     Computes the advection terms of a 2d velocity field, on a C-grid, following NEMO convention [1]_.
 
@@ -31,6 +32,8 @@ def advection(
         Spatial steps on the V grid along `x`, in meters
     dy_v : Float[Array, "lat lon"]
         Spatial steps on the V grid along `y`, in meters
+    mask : Float[Array, "lat lon"]
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
     Returns
     -------
@@ -39,29 +42,30 @@ def advection(
     v_adv_u : Float[Array, "lat lon"]
         V component of the advection term, on the U grid
     """
-    u_adv_v = _u_advection_v(u, v, dx_v, dy_v)
-    v_adv_u = _v_advection_u(u, v, dx_u, dy_u)
+    u_adv_v = _u_advection_v(u, v, dx_v, dy_v, mask)
+    v_adv_u = _v_advection_u(u, v, dx_u, dy_u, mask)
 
-    return u_adv_v, v_adv_u  # noqa
+    return u_adv_v, v_adv_u
 
 
 def _u_advection_v(
         u_u: Float[Array, "lat lon"],
         v_v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"]
+        dy_u: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
-    dudx_t = derivative(u_u, dx_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    dudx_t = derivative(u_u, dx_u, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
     dudx_v = interpolation(dudx_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     dudy_f = derivative(u_u, dy_u, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    dudy_v = interpolation(dudy_f, axis=1, padding="left")  # (F(i), F(i+1)) -> V(i+1)
+    dudy_v = interpolation(dudy_f, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
 
-    u_t = interpolation(u_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    u_t = interpolation(u_u, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
     u_v = interpolation(u_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     u_adv_v = u_v * dudx_v + v_v * dudy_v  # V(j)
-    u_adv_v = sanitize_data(u_adv_v, 0)
+    u_adv_v = sanitize_data(u_adv_v, 0., mask)
 
     return u_adv_v
 
@@ -70,19 +74,20 @@ def _v_advection_u(
         u_u: Float[Array, "lat lon"],
         v_v: Float[Array, "lat lon"],
         dx_v: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"]
+        dy_v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
     dvdx_f = derivative(v_v, dx_v, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dvdx_u = interpolation(dvdx_f, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
+    dvdx_u = interpolation(dvdx_f, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
 
-    dvdy_t = derivative(v_v, dy_v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    dvdy_t = derivative(v_v, dy_v, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
     dvdy_u = interpolation(dvdy_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
-    v_t = interpolation(v_v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    v_t = interpolation(v_v, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
     v_u = interpolation(v_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
     v_adv_u = u_u * dvdx_u + v_u * dvdy_u  # U(i)
-    v_adv_u = sanitize_data(v_adv_u, 0)
+    v_adv_u = sanitize_data(v_adv_u, 0., mask)
 
     return v_adv_u
 
