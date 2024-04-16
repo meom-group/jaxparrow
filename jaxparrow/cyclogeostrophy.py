@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import partial
-import numbers
 from typing import Literal, Union
 
 from jax import jit, lax, value_and_grad
@@ -41,7 +40,6 @@ def cyclogeostrophy(
         optim: Union[optax.GradientTransformation, str] = "sgd",
         optim_kwargs: dict = None,
         res_eps: float = RES_EPS_IT,
-        res_init: Union[float, Literal["same"]] = RES_INIT_IT,
         use_res_filter: bool = False,
         res_filter_size: int = RES_FILTER_SIZE_IT,
         return_geos: bool = False,
@@ -90,12 +88,6 @@ def cyclogeostrophy(
         When residuals are smaller, the iterative approach considers local convergence to cyclogeostrophy.
 
         Defaults to ``RES_EPS_IT``
-    res_init : Union[float | Literal["same"]], optional
-        Residual initial value of the iterative approach.
-        When residuals are larger at the first iteration,
-        the iterative approach considers local divergence to cyclogeostrophy.
-
-        If equals to `same` (default) absolute values of the geostrophic velocities are used
     use_res_filter : bool, optional
         Use of a convolution filter for the iterative approach when computing the residuals [3]_ or not [2]_.
 
@@ -159,11 +151,22 @@ def cyclogeostrophy(
     coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, mask)
 
     if method == "variational":
+        if n_it is None:
+            n_it = N_IT_VAR
+        if isinstance(optim, str):
+            if optim_kwargs is None:
+                optim_kwargs = {"learning_rate": LR_VAR}
+            optim = getattr(optax, optim)(**optim_kwargs)
+        elif not isinstance(optim, optax.GradientTransformation):
+            raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
+                            "an optimizer.")
         res = _variational(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
-                           n_it, optim, optim_kwargs, return_losses)
+                           n_it, optim, return_losses)
     elif method == "iterative":
+        if n_it is None:
+            n_it = N_IT_IT
         res = _iterative(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
-                         n_it, res_eps, res_init, use_res_filter, res_filter_size, return_losses)
+                         n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
         raise ValueError("method should be one of [\"variational\", \"iterative\"]")
 
@@ -217,6 +220,7 @@ def _it_step(
 
     # compute dist to u_cyclo and v_cyclo
     res_np1 = jnp.abs(u_np1 - u_cyclo) + jnp.abs(v_np1 - v_cyclo)
+    res_np1 = sanitize.sanitize_data(res_np1, 0., mask)
     res_np1 = lax.cond(
         use_res_filter,  # apply filter
         lambda operands: jsp.signal.convolve(operands[0], operands[1], mode="same", method="fft") / operands[2],
@@ -248,7 +252,7 @@ def _it_step(
     return u_cyclo, v_cyclo, mask_it, res_n, losses, i
 
 
-@partial(jit, static_argnames=("n_it", "res_init", "res_filter_size"))
+@partial(jit, static_argnames=("n_it", "res_filter_size"))
 def _iterative(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
@@ -259,22 +263,12 @@ def _iterative(
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
-        n_it: Union[int, None],
+        n_it: int,
         res_eps: float,
-        res_init: Union[float, str],
         use_res_filter: bool,
         res_filter_size: int,
         return_losses: bool
 ) -> [Float[Array, "lat lon"], ...]:
-    if n_it is None:
-        n_it = N_IT_IT
-    if res_init == "same":
-        res_n = jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v))
-    elif isinstance(res_init, numbers.Number):
-        res_n = res_init * jnp.ones_like(u_geos_u)
-    else:
-        raise ValueError("res_init should be equal to \"same\" or be a number.")
-
     # used if applying a filter when computing stopping criteria
     res_filter = jnp.ones((res_filter_size, res_filter_size))
     res_weights = jsp.signal.convolve(jnp.ones_like(u_geos_u), res_filter, mode="same", method="fft")
@@ -294,7 +288,8 @@ def _iterative(
     u_cyclo, v_cyclo, _, _, losses, _ = lax.while_loop(  # noqa
         lambda args: (args[-1] < n_it) | jnp.any(args[2] != 1),
         step_fn,
-        (u_geos_u, v_geos_v, mask.astype(int), res_n, jnp.ones(n_it) * jnp.nan, 0)
+        (u_geos_u, v_geos_v, mask.astype(int), jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v)),
+         jnp.ones(n_it) * jnp.nan, 0)
     )
 
     return u_cyclo, v_cyclo, losses
@@ -377,7 +372,7 @@ def _solve(
     return u_cyclo_u, v_cyclo_v, losses
 
 
-@partial(jit, static_argnames=("n_it", "optim", "optim_kwargs"))
+@partial(jit, static_argnames=("n_it", "optim"))
 def _variational(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
@@ -388,21 +383,10 @@ def _variational(
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
-        n_it: Union[int, None],
-        optim: Union[optax.GradientTransformation, str],
-        optim_kwargs: Union[dict, None],
+        n_it: int,
+        optim: optax.GradientTransformation,
         return_losses: bool
 ) -> [Float[Array, "lat lon"], ...]:
-    if n_it is None:
-        n_it = N_IT_VAR
-    if isinstance(optim, str):
-        if optim_kwargs is None:
-            optim_kwargs = {"learning_rate": LR_VAR}
-        optim = getattr(optax, optim)(**optim_kwargs)
-    elif not isinstance(optim, optax.GradientTransformation):
-        raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such an "
-                        "optimizer.")
-
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
         _var_loss_fn,

@@ -1,4 +1,6 @@
-from jaxparrow.cyclogeostrophy import _iterative, _variational
+import optax
+
+from jaxparrow.cyclogeostrophy import _iterative, _variational, LR_VAR
 from jaxparrow.geostrophy import _geostrophy
 from jaxparrow.tools.operators import interpolation
 from jaxparrow.tools.sanitize import init_mask
@@ -23,7 +25,7 @@ class TestVelocities:
         u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v,
                                                  self.dXY, self.dXY, self.dXY, self.dXY,
                                                  self.coriolis_factor, self.coriolis_factor, mask,
-                                                 20, 0.01, "same", False, 3, False)
+                                                 20, 0.01, False, 3, False)
         u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
         v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est_t, v_cyclo_est_t)  # around .0035
@@ -36,7 +38,7 @@ class TestVelocities:
         u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v,
                                                  self.dXY, self.dXY, self.dXY, self.dXY,
                                                  self.coriolis_factor, self.coriolis_factor, mask,
-                                                 20, 0.01, "same", True, 3, False)
+                                                 20, 0.01, True, 3, False)
         u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
         v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est_t, v_cyclo_est_t)  # around .0035
@@ -46,10 +48,11 @@ class TestVelocities:
         mask = init_mask(self.u_geos)
         u_geos_u = interpolation(self.u_geos, axis=1, padding="right")
         v_geos_v = interpolation(self.v_geos, axis=0, padding="right")
+        optim = optax.sgd(learning_rate=LR_VAR)
         u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v,
                                                    self.dXY, self.dXY, self.dXY, self.dXY,
                                                    self.coriolis_factor, self.coriolis_factor, mask,
-                                                   20, "sgd", None, False)
+                                                   20, optim, False)
         u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
         v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est_t, v_cyclo_est_t)  # around .0035

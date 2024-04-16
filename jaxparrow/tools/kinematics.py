@@ -3,7 +3,7 @@ from jaxtyping import Array, Float
 
 from .geometry import compute_spatial_step, compute_coriolis_factor
 from .operators import derivative, interpolation
-from .sanitize import sanitize_data
+from .sanitize import init_mask, sanitize_data
 
 
 def advection(
@@ -175,6 +175,9 @@ def normalized_relative_vorticity(
         The normalised relative vorticity,
         on the F grid (if ``interpolate=False``), or the T grid (if ``interpolate=True``)
     """
+    # Make sure the mask is initialized
+    mask = init_mask(u, mask)
+
     # Compute spatial step and Coriolis factor
     _, dy_u = compute_spatial_step(lat_u, lon_u)
     dx_v, _ = compute_spatial_step(lat_v, lon_v)
@@ -202,13 +205,13 @@ def normalized_relative_vorticity(
     return w
 
 
-def eddy_kinetic_energy(
+def kinetic_energy(
         u: Float[Array, "lat lon"],
         v: Float[Array, "lat lon"],
         interpolate: bool = True
 ) -> Float[Array, "lat lon"]:
     """
-    Computes the Eddy Kinetic Energy (EKE) of a velocity field,
+    Computes the Kinetic Energy (KE) of a velocity field,
     possibly on a C-grid (following NEMO convention [1]_) if ``interpolate=True``.
 
     Parameters
@@ -227,7 +230,7 @@ def eddy_kinetic_energy(
     Returns
     -------
     eke : Float[Array, "lat lon"]
-        The Eddy Kinetic Energy on the T grid
+        The Kinetic Energy on the T grid
     """
     if interpolate:
         # interpolate to the T point

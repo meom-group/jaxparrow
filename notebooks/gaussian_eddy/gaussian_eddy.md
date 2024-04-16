@@ -4,8 +4,9 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+import optax
 
-from jaxparrow.cyclogeostrophy import _iterative, _variational
+from jaxparrow.cyclogeostrophy import _iterative, _variational, LR_VAR
 from jaxparrow.geostrophy import _geostrophy
 from jaxparrow.tools.kinematics import magnitude
 from jaxparrow.tools.operators import interpolation
@@ -273,9 +274,10 @@ mask = init_mask(u_geos_t)
 
 
 ```python
+optim = optax.sgd(learning_rate=LR_VAR)
 u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                            coriolis_factor, coriolis_factor, mask,
-                                           n_it=20, optim="sgd", optim_kwargs=None,
+                                           n_it=20, optim=optim,
                                            return_losses=False)
 
 u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
@@ -348,7 +350,7 @@ Use of a convolution filter when computing the residuals.
 ```python
 u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                          coriolis_factor, coriolis_factor, mask,
-                                         n_it=20, res_eps=0.01, res_init="same", 
+                                         n_it=20, res_eps=0.01, 
                                          use_res_filter=True, res_filter_size=3, 
                                          return_losses=False)
 
@@ -418,7 +420,7 @@ No convolution filter, original approach.
 ```python
 u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                          coriolis_factor, coriolis_factor, mask,
-                                         n_it=20, res_eps=0.01, res_init="same", 
+                                         n_it=20, res_eps=0.01, 
                                          use_res_filter=False, res_filter_size=1, 
                                          return_losses=False)
 
