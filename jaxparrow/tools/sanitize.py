@@ -68,7 +68,7 @@ def handle_land_boundary(
     Replaces the non-finite values of ``field1`` (``field2``) with values of ``field2`` (``field1``), element-wise.
 
     It allows to introduce less non-finite values when applying grid operators.
-    In such cases, ``field1`` and ``field2`` are left and right shifted versions of a field.
+    In such cases, ``field1`` and ``field2`` are left and right shifted versions of a field (along one of the axes).
 
     Parameters
     ----------
@@ -76,6 +76,9 @@ def handle_land_boundary(
         A field
     field2 : Float[Array, "lat lon"]
         Another field
+    pad_left : bool
+        If `True`, apply padding in the `left` direction (i.e. `West` or `South`) ;
+        if `False`, apply padding in the `right` direction (i.e. `East` or `North`).
 
     Returns
     -------
@@ -102,8 +105,8 @@ def sanitize_grid_np(
     Sanitizes (unstructured) grids by interpolated and extrapolated `nan` or masked values to avoid spurious
     (`0`, `nan`, `inf`) spatial steps and Coriolis factors.
 
-    Helper function written using ``numpy`` and ``scipy``, and as such not used internally,
-    because incompatible with ``jax.vmap``.
+    Helper function written using pure ``numpy`` and ``scipy``, and as such not used internally,
+    because incompatible with ``jax.vmap`` and likes.
     Should be used before calling ``jaxparrow.geostrophy`` or ``jaxparrow.cyclogeostrophy``
     in case of suspicious latitudes or longitudes T grids.
 
