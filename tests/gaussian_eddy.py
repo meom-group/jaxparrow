@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 
 from jaxparrow.tools import geometry, kinematics
+from jaxparrow.tools.stencil import stencil
 
 
 def simulate_gaussian_eddy(
@@ -11,7 +12,7 @@ def simulate_gaussian_eddy(
         latitude: int
 ) -> [jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array,
       jax.Array, jax.Array]:
-    l0 = r0 * 1.5
+    l0 = r0 * 2
     xy = jnp.arange(0, l0, dxy)
     xy = jnp.concatenate((-xy[::-1][:-1], xy))
     X, Y = jnp.meshgrid(xy, xy)
@@ -23,7 +24,9 @@ def simulate_gaussian_eddy(
     u_geos_t, v_geos_t = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
     u_cyclo_t, v_cyclo_t = simulate_gaussian_cyclo(r0, jnp.arctan2(Y, X), u_geos_t, v_geos_t, coriolis_factor)
 
-    return (X, Y, R, dXY, coriolis_factor, ssh,
+    stencil_weights = stencil.compute_stencil_weights(ssh, dxy=dXY)
+
+    return (X, Y, R, stencil_weights, coriolis_factor, ssh,
             u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t)
 
 

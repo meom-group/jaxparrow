@@ -1,10 +1,11 @@
-from jax import lax
+from jax import jit, lax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 import numpy as np
 from scipy import interpolate
 
 
+@jit
 def sanitize_data(
         arr: Float[Array, "lat lon"],
         fill_value: float,
@@ -32,6 +33,7 @@ def sanitize_data(
     return arr
 
 
+@jit
 def init_mask(
         field: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"] = None
@@ -59,6 +61,7 @@ def init_mask(
     return mask
 
 
+@jit
 def handle_land_boundary(
         field1: Float[Array, "lat lon"],
         field2: Float[Array, "lat lon"],
@@ -89,9 +92,8 @@ def handle_land_boundary(
     """
     field1, field2 = lax.cond(
         pad_left,
-        lambda operands: (jnp.where(jnp.isfinite(operands[0]), operands[0], operands[1]), operands[1]),
-        lambda operands: (operands[0], jnp.where(jnp.isfinite(operands[1]), operands[1], operands[0])),
-        (field1, field2)
+        lambda: (jnp.where(jnp.isfinite(field1), field1, field2), field2),
+        lambda: (field1, jnp.where(jnp.isfinite(field2), field2, field1))
     )
     return field1, field2
 

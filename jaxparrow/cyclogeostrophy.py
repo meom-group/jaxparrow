@@ -8,8 +8,9 @@ import jax.scipy as jsp
 from jaxtyping import Array, Float, Scalar
 import optax
 
-from .tools import geometry, kinematics, sanitize
 from .geostrophy import geostrophy
+from .tools import geometry, kinematics, sanitize
+from .tools.stencil import stencil
 
 #: Default maximum number of iterations for Penven and Ioannou approaches
 N_IT_IT = 20
@@ -44,7 +45,8 @@ def cyclogeostrophy(
         res_filter_size: int = RES_FILTER_SIZE_IT,
         return_geos: bool = False,
         return_grids: bool = True,
-        return_losses: bool = False
+        return_losses: bool = False,
+        stencil_width: int = stencil.STENCIL_WIDTH
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
@@ -108,6 +110,10 @@ def cyclogeostrophy(
         If `True`, returns the losses (cyclogeostrophic imbalance) over iterations.
 
         Defaults to `False`
+    stencil_width: int, optional
+        Width of the stencil used to compute derivatives. As we use C-grids, it should be an even integer.
+
+        Defaults to ``STENCIL_WIDTH``
 
     Returns
     -------
@@ -136,17 +142,13 @@ def cyclogeostrophy(
     # Compute geostrophic SSC velocity field
     u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = geostrophy(ssh_t, lat_t, lon_t, mask, return_grids=True)
 
-    # Compute spatial steps and Coriolis factors
-    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
+    # Compute stencil weights and Coriolis factors
+    stencil_weights_u = stencil.compute_stencil_weights(ssh_t, lat_u, lon_u, stencil_width)
+    stencil_weights_v = stencil.compute_stencil_weights(ssh_t, lat_v, lon_v, stencil_width)
     coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
     # Handle spurious and masked data
-    dx_u = sanitize.sanitize_data(dx_u, jnp.nan, mask)
-    dy_u = sanitize.sanitize_data(dy_u, jnp.nan, mask)
-    dx_v = sanitize.sanitize_data(dx_v, jnp.nan, mask)
-    dy_v = sanitize.sanitize_data(dy_v, jnp.nan, mask)
     coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, mask)
     coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, mask)
 
@@ -159,13 +161,15 @@ def cyclogeostrophy(
             optim = getattr(optax, optim)(**optim_kwargs)
         elif not isinstance(optim, optax.GradientTransformation):
             raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
-                            "an optimizer.")
-        res = _variational(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
+                            "an optimizer")
+        res = _variational(u_geos_u, v_geos_v, stencil_weights_u, stencil_weights_v,
+                           coriolis_factor_u, coriolis_factor_v, mask,
                            n_it, optim, return_losses)
     elif method == "iterative":
         if n_it is None:
             n_it = N_IT_IT
-        res = _iterative(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
+        res = _iterative(u_geos_u, v_geos_v, stencil_weights_u, stencil_weights_v,
+                         coriolis_factor_u, coriolis_factor_v, mask,
                          n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
         raise ValueError("method should be one of [\"variational\", \"iterative\"]")
@@ -193,10 +197,8 @@ def cyclogeostrophy(
 def _it_step(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
+        stencil_weights_u: Float[Array, "2 2 lat lon stencil_width"],
+        stencil_weights_v: Float[Array, "2 2 lat lon stencil_width"],
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
@@ -214,7 +216,7 @@ def _it_step(
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"],
       Float[Array, "n_it"], int]:
     # next it
-    u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, dx_u, dy_u, dx_v, dy_v, mask)
+    u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, stencil_weights_u, stencil_weights_v, mask)
     u_np1 = u_geos_u - v_adv_u / coriolis_factor_u
     v_np1 = v_geos_v + u_adv_v / coriolis_factor_v
 
@@ -256,10 +258,8 @@ def _it_step(
 def _iterative(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
+        stencil_weights_u: Float[Array, "2 2 lat lon stencil_width"],
+        stencil_weights_v: Float[Array, "2 2 lat lon stencil_width"],
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
@@ -277,14 +277,14 @@ def _iterative(
     def step_fn(pytree):
         return _it_step(
             u_geos_u, v_geos_v,
-            dx_u, dx_v, dy_u, dy_v,
+            stencil_weights_u, stencil_weights_v,
             coriolis_factor_u, coriolis_factor_v, mask,
             res_eps, res_filter, res_weights,
             use_res_filter, return_losses,
             *pytree
         )
 
-    # apply updates
+    # apply updates  TODO: replace lax.while_loop with for_iloop or scan
     u_cyclo, v_cyclo, _, _, losses, _ = lax.while_loop(  # noqa
         lambda args: (args[-1] < n_it) | jnp.any(args[2] != 1),
         step_fn,
@@ -302,17 +302,15 @@ def _iterative(
 def _var_loss_fn(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
+        stencil_weights_u: Float[Array, "2 2 lat lon stencil_width"],
+        stencil_weights_v: Float[Array, "2 2 lat lon stencil_width"],
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
         uv_cyclo: [Float[Array, "lat lon"], Float[Array, "lat lon"]]
 ) -> Float[Scalar, ""]:
     u_cyclo_u, v_cyclo_v = uv_cyclo
-    u_adv_v, v_adv_u = kinematics.advection(u_cyclo_u, v_cyclo_v, dx_u, dy_u, dx_v, dy_v, mask)
+    u_adv_v, v_adv_u = kinematics.advection(u_cyclo_u, v_cyclo_v, stencil_weights_u, stencil_weights_v, mask)
     return _cyclogeostrophic_diff(u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v, u_adv_v, v_adv_u,
                                   coriolis_factor_u, coriolis_factor_v)
 
@@ -363,6 +361,7 @@ def _solve(
     def step_fn(pytree):
         return _var_step(mask, loss_fn, optim,  return_losses, *pytree)
 
+    # TODO: replace lax.while_loop with for_iloop or scan
     u_cyclo_u, v_cyclo_v, opt_state, losses, i = lax.while_loop(  # noqa
         lambda args: args[-1] < n_it,
         step_fn,
@@ -376,10 +375,8 @@ def _solve(
 def _variational(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
+        stencil_weights_u: Float[Array, "2 2 lat lon stencil_width"],
+        stencil_weights_v: Float[Array, "2 2 lat lon stencil_width"],
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
@@ -390,12 +387,13 @@ def _variational(
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
         _var_loss_fn,
-        u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
+        u_geos_u, v_geos_v, stencil_weights_u, stencil_weights_v, coriolis_factor_u, coriolis_factor_v, mask
     )
 
     return _solve(u_geos_u, v_geos_v, mask, loss_fn, n_it, optim, return_losses)
 
 
+@jit
 def _cyclogeostrophic_diff(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
@@ -406,6 +404,6 @@ def _cyclogeostrophic_diff(
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"]
 ) -> Float[Scalar, ""]:
-    J_u = jnp.nansum((u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u) ** 2)
-    J_v = jnp.nansum((v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v) ** 2)
-    return J_u + J_v
+    j_u = jnp.nansum((u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u) ** 2)
+    j_v = jnp.nansum((v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v) ** 2)
+    return j_u + j_v

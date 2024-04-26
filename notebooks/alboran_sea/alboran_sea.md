@@ -108,8 +108,8 @@ mmin = np.nanmin(magnitude)
 mmax = np.nanmax(magnitude)
 
 # interpolate to the center of the cells
-uvel_t = operators.interpolation(uvel, axis=1, padding="left")
-vvel_t = operators.interpolation(vvel, axis=0, padding="left")
+uvel_t = operators.interpolation(uvel, axis=1, pad_left=False)
+vvel_t = operators.interpolation(vvel, axis=0, pad_left=False)
 ```
 
 

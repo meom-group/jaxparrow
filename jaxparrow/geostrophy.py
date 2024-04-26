@@ -1,8 +1,9 @@
-import jax
+from jax import jit
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 from .tools import geometry, operators, sanitize
+from .tools.stencil import stencil
 
 
 # =============================================================================
@@ -14,7 +15,8 @@ def geostrophy(
         lat_t: Float[Array, "lat lon"],
         lon_t: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"] = None,
-        return_grids: bool = True
+        return_grids: bool = True,
+        stencil_width: int = stencil.STENCIL_WIDTH
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
@@ -37,6 +39,10 @@ def geostrophy(
         If `True`, returns the U and V grids.
 
         Defaults to `True`
+    stencil_width: int, optional
+        Width of the stencil used to compute derivatives. As we use C-grids, it should be an even integer.
+
+        Defaults to ``STENCIL_WIDTH``
 
     Returns
     -------
@@ -53,20 +59,21 @@ def geostrophy(
     lon_v : Float[Array, "lat lon"]
         Longitudes of the V grid, if ``return_grids=True``
     """
+    if (stencil_width % 2) != 0:
+        raise ValueError("stencil_width should an even integer")
+
     # Make sure the mask is initialized
     mask = sanitize.init_mask(ssh_t, mask)
 
-    # Compute spatial steps and Coriolis factors
-    dx_t, dy_t = geometry.compute_spatial_step(lat_t, lon_t)
+    # Compute stencil weights and Coriolis factors
+    stencil_weights = stencil.compute_stencil_weights(ssh_t, lat_t, lon_t, stencil_width)
     coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
 
     # Handle spurious and masked data
     ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, mask)  # avoid spurious velocities near the coast
-    dx_t = sanitize.sanitize_data(dx_t, jnp.nan, mask)
-    dy_t = sanitize.sanitize_data(dy_t, jnp.nan, mask)
     coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, mask)
 
-    u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t)
+    u_geos_u, v_geos_v = _geostrophy(ssh_t, stencil_weights, coriolis_factor_t)
 
     # Handle masked data
     u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, mask)
@@ -82,26 +89,25 @@ def geostrophy(
     return res
 
 
-@jax.jit
+@jit
 def _geostrophy(
         ssh_t: Float[Array, "lat lon"],
-        dx_t: Float[Array, "lat lon"],
-        dy_t: Float[Array, "lat lon"],
+        stencil_weights: Float[Array, "2 2 lat lon stencil_width"],
         coriolis_factor_t: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     # Compute the gradient of the ssh
-    ssh_dx_u = operators.derivative(ssh_t, dx_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-    ssh_dy_v = operators.derivative(ssh_t, dy_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    ssh_dx_u = operators.derivative(ssh_t, stencil_weights, axis=1, pad_left=False)  # (T(i), T(i+1)) -> U(i)
+    ssh_dy_v = operators.derivative(ssh_t, stencil_weights, axis=0, pad_left=False)  # (T(j), T(j+1)) -> V(j)
 
     # Interpolate the data
-    ssh_dy_t = operators.interpolation(ssh_dy_v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
-    ssh_dy_u = operators.interpolation(ssh_dy_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    ssh_dy_t = operators.interpolation(ssh_dy_v, axis=0, pad_left=True)  # (V(j), V(j+1)) -> T(j+1)
+    ssh_dy_u = operators.interpolation(ssh_dy_t, axis=1, pad_left=False)  # (T(i), T(i+1)) -> U(i)
 
-    ssh_dx_t = operators.interpolation(ssh_dx_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-    ssh_dx_v = operators.interpolation(ssh_dx_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    ssh_dx_t = operators.interpolation(ssh_dx_u, axis=1, pad_left=True)  # (U(i), U(i+1)) -> T(i+1)
+    ssh_dx_v = operators.interpolation(ssh_dx_t, axis=0, pad_left=False)  # (T(j), T(j+1)) -> V(j)
 
-    coriolis_factor_u = operators.interpolation(coriolis_factor_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-    coriolis_factor_v = operators.interpolation(coriolis_factor_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    coriolis_factor_u = operators.interpolation(coriolis_factor_t, axis=1, pad_left=False)  # (T(i), T(i+1)) -> U(i)
+    coriolis_factor_v = operators.interpolation(coriolis_factor_t, axis=0, pad_left=False)  # (T(j), T(j+1)) -> V(j)
 
     # Computing the geostrophic velocities
     u_geos_u = - geometry.GRAVITY * ssh_dy_u / coriolis_factor_u  # U(i)

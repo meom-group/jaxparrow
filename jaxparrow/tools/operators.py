@@ -1,16 +1,18 @@
+from functools import partial
 from typing import Literal
 
-from jax import lax
-import jax.numpy as jnp
+from jax import jit, lax
 from jaxtyping import Array, Float
 
 from .sanitize import handle_land_boundary
+from .stencil.stencil import compute_stencil_derivative
 
 
+@jit
 def interpolation(
         field: Float[Array, "lat lon"],
         axis: Literal[0, 1],
-        padding: Literal["left", "right"]
+        pad_left: bool
 ) -> Float[Array, "lat lon"]:
     """
     Interpolates the values of a ``field`` along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/`x`),
@@ -24,7 +26,7 @@ def interpolation(
         Field to interpolate
     axis : Literal[0, 1]
         Axis along which interpolation is performed
-    padding : Literal["left", "right"]
+    pad_left : bool
         Padding direction.
         For example, following NEMO convention [1]_,
         interpolating from U to T points requires a `left` padding
@@ -37,62 +39,55 @@ def interpolation(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_interpolate(field_b, field_f, pad_left):
+    def do_interpolate(field_b, field_f):
         field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
-        return 0.5 * (field_b + field_f)
+        return (field_b + field_f) / 2
 
-    def axis0(arr, pad_left):
-        field_b, field_f = arr[:-1, :], arr[1:, :]
-        midpoint_values = do_interpolate(field_b, field_f, pad_left)
-        arr = lax.cond(
+    def axis0():
+        field_b, field_f = field[:-1, :], field[1:, :]
+        midpoint_values = do_interpolate(field_b, field_f)
+        return lax.cond(
             pad_left,
-            lambda operands: operands[0].at[1:, :].set(operands[1]),
-            lambda operands: operands[0].at[:-1, :].set(operands[1]),
-            (arr, midpoint_values)
+            lambda: field.at[1:, :].set(midpoint_values),
+            lambda: field.at[:-1, :].set(midpoint_values)
         )
-        return arr
 
-    def axis1(arr, pad_left):
-        field_b, field_f = arr[:, :-1], arr[:, 1:]
-        midpoint_values = do_interpolate(field_b, field_f, pad_left)
-        arr = lax.cond(
+    def axis1():
+        field_b, field_f = field[:, :-1], field[:, 1:]
+        midpoint_values = do_interpolate(field_b, field_f)
+        return lax.cond(
             pad_left,
-            lambda operands: operands[0].at[:, 1:].set(operands[1]),
-            lambda operands: operands[0].at[:, :-1].set(operands[1]),
-            (arr, midpoint_values)
+            lambda: field.at[:, 1:].set(midpoint_values),
+            lambda: field.at[:, :-1].set(midpoint_values)
         )
-        return arr
 
-    field = lax.cond(
-        axis == 0,
-        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
-        (field, padding == "left")
-    )
+    field = lax.cond(axis == 0, axis0, axis1)
 
     return field
 
 
+@partial(jit, static_argnames=("axis", "pad_left"))
 def derivative(
         field: Float[Array, "lat lon"],
-        dxy: Float[Array, "lat lon"],
+        stencil_weights: Float[Array, "2 2 lat lon stencil_width"],
         axis: Literal[0, 1],
-        padding: Literal["left", "right"]
+        pad_left: bool
 ) -> Float[Array, "lat lon"]:
     """
-    Differentiates a ``field``, using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x'),
-    applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
-    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain,
-    using nearest derivative value at the padded edge.
+    Differentiates a ``field`` using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x').
+    Uses stencil of width ``stencil_width`` to compute the derivative of the field, as advised by Arbic et al. _[5].
+    Applies 0 ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
+    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain.
 
     Parameters
     ----------
     field : Float[Array, "lat lon"]
         Field to differentiate
-    dxy : Float[Array, "lat lon"]
-        Spatial steps
+    stencil_weights : Float[Array, "2 2 lat lon stencil_width"]
+        Stencil weights of every ``field`` point in both directions and for both padding
     axis : Literal[0, 1]
         Axis along which interpolation is performed
-    padding : Literal["left", "right"]
+    pad_left : bool
         Padding direction.
         For example, following NEMO convention [1]_,
         interpolating from U to T points requires a `left` padding
@@ -103,42 +98,8 @@ def derivative(
     Returns
     -------
     field : Float[Array, "lat lon"]
-        Interpolated field
+        Differentiated field
     """
-    def do_differentiate(field_b, field_f, pad_left):
-        field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
-        return field_f - field_b
+    field = compute_stencil_derivative(field, stencil_weights, axis, pad_left)
 
-    def axis0(_field, pad_left):
-        field_b, field_f = _field[:-1, :], _field[1:, :]
-        midpoint_values = do_differentiate(field_b, field_f, pad_left)
-
-        _field = lax.cond(
-            pad_left,
-            lambda operand: jnp.pad(operand, pad_width=((1, 0), (0, 0)), mode="edge"),
-            lambda operand: jnp.pad(operand, pad_width=((0, 1), (0, 0)), mode="edge"),
-            midpoint_values
-        )
-
-        return _field
-
-    def axis1(_field, pad_left):
-        field_b, field_f = _field[:, :-1], _field[:, 1:]
-        midpoint_values = do_differentiate(field_b, field_f, pad_left)
-
-        _field = lax.cond(
-            pad_left,
-            lambda operand: jnp.pad(operand, pad_width=((0, 0), (1, 0)), mode="edge"),
-            lambda operand: jnp.pad(operand, pad_width=((0, 0), (0, 1)), mode="edge"),
-            midpoint_values
-        )
-
-        return _field
-
-    field = lax.cond(
-        axis == 0,
-        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
-        (field, padding == "left")
-    )
-
-    return field / dxy
+    return field

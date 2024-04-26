@@ -1,7 +1,6 @@
+from jax import jit
 import jax.numpy as jnp
 from jaxtyping import Array, Float
-
-from .operators import interpolation
 
 
 #: Approximate earth angular speed
@@ -14,6 +13,7 @@ GRAVITY = 9.81
 P0 = jnp.pi / 180
 
 
+@jit
 def compute_spatial_step(
         lat: Float[Array, "lat lon"],
         lon: Float[Array, "lat lon"]
@@ -38,9 +38,9 @@ def compute_spatial_step(
     dy : Float[Array, "lat lon"]
         Spatial steps in meters along `y`
     """
-    def sphere_distance(_lats, _late, _lons, _lone):
-        dlat, dlon = P0 * (_late - _lats), P0 * (_lone - _lons)
-        return EARTH_RADIUS * jnp.sqrt(dlat ** 2 + jnp.cos(P0 * _lats) * jnp.cos(P0 * _late) * dlon ** 2)
+    def sphere_distance(lat_s, lat_e, lon_s, lon_e):
+        dlat, dlon = P0 * (lat_e - lat_s), P0 * (lon_e - lon_s)
+        return EARTH_RADIUS * jnp.sqrt(dlat ** 2 + jnp.cos(P0 * lat_s) * jnp.cos(P0 * lat_e) * dlon ** 2)
 
     dx, dy = jnp.zeros_like(lat), jnp.zeros_like(lat)
     # dx
@@ -52,6 +52,7 @@ def compute_spatial_step(
     return dx, dy
 
 
+@jit
 def compute_coriolis_factor(
         lat: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
@@ -71,6 +72,7 @@ def compute_coriolis_factor(
     return 2 * EARTH_ANG_SPEED * jnp.sin(lat * P0)
 
 
+@jit
 def compute_uv_grids(
         lat_t: Float[Array, "lat lon"],
         lon_t: Float[Array, "lat lon"]
@@ -96,14 +98,16 @@ def compute_uv_grids(
     lon_v : Float[Array, "lat lon"]
         Longitudes of the V grid
     """
-    lat_u = interpolation(lat_t, axis=1, padding="right")
+    from .operators import interpolation
+
+    lat_u = interpolation(lat_t, axis=1, pad_left=False)
     lat_u = lat_u.at[:, -1].set(2 * lat_t[:, -1] - lat_t[:, -2])
-    lon_u = interpolation(lon_t, axis=1, padding="right")
+    lon_u = interpolation(lon_t, axis=1, pad_left=False)
     lon_u = lon_u.at[:, -1].set(2 * lon_t[:, -1] - lon_t[:, -2])
 
-    lat_v = interpolation(lat_t, axis=0, padding="right")
+    lat_v = interpolation(lat_t, axis=0, pad_left=False)
     lat_v = lat_v.at[-1, :].set(2 * lat_t[-1, :] - lat_t[-2, :])
-    lon_v = interpolation(lon_t, axis=0, padding="right")
+    lon_v = interpolation(lon_t, axis=0, pad_left=False)
     lon_v = lon_v.at[-1, :].set(2 * lon_t[-1, :] - lon_t[-2, :])
 
     return lat_u, lon_u, lat_v, lon_v
