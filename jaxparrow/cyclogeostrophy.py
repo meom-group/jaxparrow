@@ -137,10 +137,10 @@ def cyclogeostrophy(
         Cyclogeostrophic imbalance evaluated at each iteration, if ``return_losses=True``
     """
     # Make sure the mask is initialized
-    mask = sanitize.init_mask(ssh_t, mask)
+    is_land = sanitize.init_land_mask(ssh_t, mask)
 
     # Compute geostrophic SSC velocity field
-    u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = geostrophy(ssh_t, lat_t, lon_t, mask, return_grids=True)
+    u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = geostrophy(ssh_t, lat_t, lon_t, is_land, return_grids=True)
 
     # Compute stencil weights and Coriolis factors
     stencil_weights_u = stencil.compute_stencil_weights(ssh_t, lat_u, lon_u, stencil_width)
@@ -149,8 +149,8 @@ def cyclogeostrophy(
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
     # Handle spurious and masked data
-    coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, mask)
-    coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, mask)
+    coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, is_land)
+    coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, is_land)
 
     if method == "variational":
         if n_it is None:
@@ -163,21 +163,21 @@ def cyclogeostrophy(
             raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
                             "an optimizer")
         res = _variational(u_geos_u, v_geos_v, stencil_weights_u, stencil_weights_v,
-                           coriolis_factor_u, coriolis_factor_v, mask,
+                           coriolis_factor_u, coriolis_factor_v, is_land,
                            n_it, optim, return_losses)
     elif method == "iterative":
         if n_it is None:
             n_it = N_IT_IT
         res = _iterative(u_geos_u, v_geos_v, stencil_weights_u, stencil_weights_v,
-                         coriolis_factor_u, coriolis_factor_v, mask,
+                         coriolis_factor_u, coriolis_factor_v, is_land,
                          n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
         raise ValueError("method should be one of [\"variational\", \"iterative\"]")
 
     # Handle masked data
     u_cyclo_u, v_cyclo_v, losses = res
-    u_cyclo_u = sanitize.sanitize_data(u_cyclo_u, jnp.nan, mask)
-    v_cyclo_v = sanitize.sanitize_data(v_cyclo_v, jnp.nan, mask)
+    u_cyclo_u = sanitize.sanitize_data(u_cyclo_u, jnp.nan, is_land)
+    v_cyclo_v = sanitize.sanitize_data(v_cyclo_v, jnp.nan, is_land)
 
     res = (u_cyclo_u, v_cyclo_v)
     if return_geos:

@@ -12,7 +12,7 @@ def simulate_gaussian_eddy(
         latitude: int
 ) -> [jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array,
       jax.Array, jax.Array]:
-    l0 = r0 * 2
+    l0 = r0 * 2  # limit boundary impact
     xy = jnp.arange(0, l0, dxy)
     xy = jnp.concatenate((-xy[::-1][:-1], xy))
     X, Y = jnp.meshgrid(xy, xy)

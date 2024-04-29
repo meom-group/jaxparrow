@@ -6,17 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import optax
 
-from jaxparrow.cyclogeostrophy import _iterative, _variational, LR_VAR
+from jaxparrow.cyclogeostrophy import _iterative, _variational
 from jaxparrow.geostrophy import _geostrophy
 from jaxparrow.tools.kinematics import magnitude
 from jaxparrow.tools.operators import interpolation
-from jaxparrow.tools.sanitize import init_mask
+from jaxparrow.tools.sanitize import init_land_mask
 
 sys.path.extend([os.path.join(os.path.dirname(os.getcwd()), "tests")])
 from tests import gaussian_eddy as ge  # noqa
 
-%reload_ext autoreload
-%autoreload 2
+%reload_ext
+autoreload
+%autoreload
+2
 ```
 
 # Gaussian eddy
@@ -30,10 +32,10 @@ We choose to use a constant spatial step in meters.
 ```python
 # Alboran sea settings
 R0 = 50e3
-ETA0 = .1
+ETA0 = .2
 LAT = 36
 
-dxy = 15e3
+dxy = 10e3
 ```
 
 ## Simulating the eddy
@@ -177,13 +179,17 @@ plt.show()
 
 
 ```python
-ax = plt.subplot()
-ax.set_title("numerical geostrophy")
-ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azimuthal velocity (m/s)")
-ax.scatter(R.flatten(), azim_geos_est.flatten(), s=1)
-ax.vlines(R.flatten()[np.abs(azim_geos_est).flatten().argmax()], 
-          ymin=azim_geos_est.min(), ymax=azim_geos_est.max(), colors="r", linestyles="dashed")
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+ax1.set_title("numerical geostrophy")
+ax1.set_xlabel("radial distance (m)")
+ax1.set_ylabel("azimuthal velocity (m/s)")
+ax1.scatter(R.flatten(), azim_geos_est.flatten(), s=1)
+ax1.vlines(R.flatten()[np.abs(azim_geos_est).flatten().argmax()], 
+           ymin=azim_geos_est.min(), ymax=azim_geos_est.max(), colors="r", linestyles="dashed")
+ax2.set_title("numerical error")
+ax2.set_xlabel("radial distance (m)")
+ax2.set_ylabel("absolute error (m/s)")
+ax2.scatter(R.flatten(), azim_geos_est.flatten() - azim_geos.flatten(), s=1)
 plt.show()
 ```
 
@@ -201,7 +207,7 @@ ge.compute_rmse(u_geos_t, u_geos_est_t), ge.compute_rmse(v_geos_t, v_geos_est_t)
 
 
 
-    (Array(0.00083074, dtype=float32), Array(0.00083074, dtype=float32))
+    (Array(0.0068815, dtype=float32), Array(0.0068815, dtype=float32))
 
 
 
@@ -265,16 +271,16 @@ $\mathbf{u} - \frac{\mathbf{k}}{f} \times (\mathbf{u} \cdot \nabla \mathbf{u}) =
 
 
 ```python
-u_geos_u = interpolation(u_geos_t, axis=1, padding="right")
-v_geos_v = interpolation(v_geos_t, axis=0, padding="right")
-mask = init_mask(u_geos_t)
+u_geos_u = u_geos_est
+v_geos_v = v_geos_est
+mask = init_land_mask(u_geos_t)
 ```
 
 #### Variational estimation
 
 
 ```python
-optim = optax.sgd(learning_rate=LR_VAR)
+optim = optax.sgd(learning_rate=5e-2)
 u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                            coriolis_factor, coriolis_factor, mask,
                                            n_it=20, optim=optim,
@@ -310,13 +316,17 @@ plt.show()
 
 
 ```python
-ax = plt.subplot()
-ax.set_title("variational cyclogeostrophy")
-ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azimuthal velocity (m/s)")
-ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
-ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
-          ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+ax1.set_title("variational cyclogeostrophy")
+ax1.set_xlabel("radial distance (m)")
+ax1.set_ylabel("azimuthal velocity (m/s)")
+ax1.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
+ax1.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()],
+           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+ax2.set_title("numerical error")
+ax2.set_xlabel("radial distance (m)")
+ax2.set_ylabel("absolute error (m/s)")
+ax2.scatter(R.flatten(), azim_cyclo_est.flatten() - azim_cyclo.flatten(), s=1)
 plt.show()
 ```
 
@@ -334,7 +344,7 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00273015, dtype=float32), Array(0.00273015, dtype=float32))
+    (Array(0.00562905, dtype=float32), Array(0.00562905, dtype=float32))
 
 
 
@@ -384,13 +394,17 @@ plt.show()
 
 
 ```python
-ax = plt.subplot()
-ax.set_title("iterative (filter) cyclogeostrophy")
-ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azimuthal velocity (m/s)")
-ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
-ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
-          ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+ax1.set_title("iterative (filter) cyclogeostrophy")
+ax1.set_xlabel("radial distance (m)")
+ax1.set_ylabel("azimuthal velocity (m/s)")
+ax1.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
+ax1.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
+           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+ax2.set_title("numerical error")
+ax2.set_xlabel("radial distance (m)")
+ax2.set_ylabel("absolute error (m/s)")
+ax2.scatter(R.flatten(), azim_cyclo_est.flatten() - azim_cyclo.flatten(), s=1)
 plt.show()
 ```
 
@@ -408,7 +422,7 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00295354, dtype=float32), Array(0.00295354, dtype=float32))
+    (Array(0.00847729, dtype=float32), Array(0.00847729, dtype=float32))
 
 
 
@@ -454,13 +468,17 @@ plt.show()
 
 
 ```python
-ax = plt.subplot()
-ax.set_title("iterative cyclogeostrophy")
-ax.set_xlabel("radial distance (m)")
-ax.set_ylabel("azimuthal velocity (m/s)")
-ax.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
-ax.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
-          ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+_, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+ax1.set_title("iterative cyclogeostrophy")
+ax1.set_xlabel("radial distance (m)")
+ax1.set_ylabel("azimuthal velocity (m/s)")
+ax1.scatter(R.flatten(), azim_cyclo_est.flatten(), s=1)
+ax1.vlines(R.flatten()[np.abs(azim_cyclo_est).flatten().argmax()], 
+           ymin=azim_cyclo_est.min(), ymax=azim_cyclo_est.max(), colors="r", linestyles="dashed")
+ax2.set_title("numerical error")
+ax2.set_xlabel("radial distance (m)")
+ax2.set_ylabel("absolute error (m/s)")
+ax2.scatter(R.flatten(), azim_cyclo_est.flatten() - azim_cyclo.flatten(), s=1)
 plt.show()
 ```
 
@@ -478,6 +496,6 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00295272, dtype=float32), Array(0.00295272, dtype=float32))
+    (Array(0.00861186, dtype=float32), Array(0.00861186, dtype=float32))
 
 

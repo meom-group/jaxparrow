@@ -4,7 +4,7 @@ from jaxtyping import Array, Float
 
 from .geometry import compute_coriolis_factor
 from .operators import derivative, interpolation
-from .sanitize import init_mask, sanitize_data
+from .sanitize import init_land_mask, sanitize_data
 from .stencil.stencil import compute_stencil_weights, STENCIL_WIDTH
 
 
@@ -191,7 +191,7 @@ def normalized_relative_vorticity(
         on the F grid (if ``interpolate=False``), or the T grid (if ``interpolate=True``)
     """
     # Make sure the mask is initialized
-    mask = init_mask(u, mask)
+    mask = init_land_mask(u, mask)
 
     # Compute Coriolis factors and stencil weights
     f_u = compute_coriolis_factor(lat_u)
