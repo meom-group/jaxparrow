@@ -21,7 +21,7 @@ autoreload
 2
 ```
 
-# Gaussian eddy
+# Method validation in the idealized gaussian eddy scenario
 
 We want to use a gaussian eddy for our functional tests, as analytical solutions can be derived in that setting.
 
@@ -283,8 +283,7 @@ mask = init_land_mask(u_geos_t)
 optim = optax.sgd(learning_rate=5e-2)
 u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                            coriolis_factor, coriolis_factor, mask,
-                                           n_it=20, optim=optim,
-                                           return_losses=False)
+                                           n_it=20, optim=optim)
 
 u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
 v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")

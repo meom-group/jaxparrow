@@ -49,7 +49,7 @@ class TestVelocities:
         u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_est, v_geos_est,
                                                    self.dXY, self.dXY, self.dXY, self.dXY,
                                                    self.coriolis_factor, self.coriolis_factor, mask,
-                                                   1000, optim, False)
+                                                   1000, optim)
         u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
         v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
         cyclo_rmse = self.compute_rmse(self.u_cyclo, self.v_cyclo, u_cyclo_est_t, v_cyclo_est_t)  # around .002
