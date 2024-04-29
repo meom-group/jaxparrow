@@ -54,23 +54,23 @@ def geostrophy(
         Longitudes of the V grid, if ``return_grids=True``
     """
     # Make sure the mask is initialized
-    mask = sanitize.init_mask(ssh_t, mask)
+    is_land = sanitize.init_land_mask(ssh_t, mask)
 
     # Compute spatial steps and Coriolis factors
     dx_t, dy_t = geometry.compute_spatial_step(lat_t, lon_t)
     coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
 
     # Handle spurious and masked data
-    ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, mask)  # avoid spurious velocities near the coast
-    dx_t = sanitize.sanitize_data(dx_t, jnp.nan, mask)
-    dy_t = sanitize.sanitize_data(dy_t, jnp.nan, mask)
-    coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, mask)
+    ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, is_land)  # avoid spurious velocities near the coast
+    dx_t = sanitize.sanitize_data(dx_t, jnp.nan, is_land)
+    dy_t = sanitize.sanitize_data(dy_t, jnp.nan, is_land)
+    coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, is_land)
 
     u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t)
 
     # Handle masked data
-    u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, mask)
-    v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, mask)
+    u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
+    v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
 
     # Compute U and V grids
     lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)

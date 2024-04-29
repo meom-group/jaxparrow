@@ -3,7 +3,7 @@ from jaxtyping import Array, Float
 
 from .geometry import compute_spatial_step, compute_coriolis_factor
 from .operators import derivative, interpolation
-from .sanitize import init_mask, sanitize_data
+from .sanitize import init_land_mask, sanitize_data
 
 
 def advection(
@@ -176,7 +176,7 @@ def normalized_relative_vorticity(
         on the F grid (if ``interpolate=False``), or the T grid (if ``interpolate=True``)
     """
     # Make sure the mask is initialized
-    mask = init_mask(u, mask)
+    mask = init_land_mask(u, mask)
 
     # Compute spatial step and Coriolis factor
     _, dy_u = compute_spatial_step(lat_u, lon_u)
