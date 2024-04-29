@@ -32,7 +32,7 @@ def sanitize_data(
     return arr
 
 
-def init_mask(
+def init_land_mask(
         field: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"] = None
 ) -> Float[Array, "lat lon"]:
@@ -55,7 +55,7 @@ def init_mask(
         Initialized (if needed) mask
     """
     if mask is None:
-        mask = jnp.isfinite(field)
+        mask = ~jnp.isfinite(field)
     return mask
 
 
