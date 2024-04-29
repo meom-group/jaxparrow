@@ -21,7 +21,7 @@ autoreload
 2
 ```
 
-# Gaussian eddy
+# Method validation in the idealized gaussian eddy scenario
 
 We want to use a gaussian eddy for our functional tests, as analytical solutions can be derived in that setting.
 
