@@ -65,12 +65,12 @@ def geostrophy(
     # Make sure the mask is initialized
     is_land = sanitize.init_land_mask(ssh_t, mask)
 
-    # Compute stencil weights and Coriolis factors
-    stencil_weights = stencil.compute_stencil_weights(ssh_t, lat_t, lon_t, stencil_width)
-    coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
-
-    # Handle spurious and masked data
+    # Compute stencil weights
     ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, is_land)  # avoid spurious velocities near the coast
+    stencil_weights = stencil.compute_stencil_weights(ssh_t, lat_t, lon_t, stencil_width=stencil_width)
+
+    # Compute Coriolis factors
+    coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
     coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, is_land)
 
     u_geos_u, v_geos_v = _geostrophy(ssh_t, stencil_weights, coriolis_factor_t)

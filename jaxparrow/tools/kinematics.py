@@ -25,14 +25,10 @@ def advection(
         U component of the velocity field (on the U grid)
     v : Float[Array, "lat lon"]
         V component of the SSC velocity field (on the V grid)
-    dx_u : Float[Array, "lat lon"]
-        Spatial steps on the U grid along `x`, in meters
-    dy_u : Float[Array, "lat lon"]
-        Spatial steps on the U grid along `y`, in meters
-    dx_v : Float[Array, "lat lon"]
-        Spatial steps on the V grid along `x`, in meters
-    dy_v : Float[Array, "lat lon"]
-        Spatial steps on the V grid along `y`, in meters
+    stencil_weights_u : Float[Array, "2 2 lat lon stencil_width"]
+        Tensor of stencil weights of every ``field`` U-point in both directions and for both padding
+    stencil_weights_v : Float[Array, "2 2 lat lon stencil_width"]
+        Tensor of stencil weights of every ``field`` V-point in both directions and for both padding
     mask : Float[Array, "lat lon"]
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
@@ -196,9 +192,9 @@ def normalized_relative_vorticity(
     # Compute Coriolis factors and stencil weights
     f_u = compute_coriolis_factor(lat_u)
     if stencil_weights_u is None:
-        stencil_weights_u = compute_stencil_weights(u, lat_u, lon_u, stencil_width)
+        stencil_weights_u = compute_stencil_weights(u, lat_u, lon_u, stencil_width=stencil_width)
     if stencil_weights_v is None:
-        stencil_weights_v = compute_stencil_weights(v, lat_v, lon_v, stencil_width)
+        stencil_weights_v = compute_stencil_weights(v, lat_v, lon_v, stencil_width=stencil_width)
 
     # Handle spurious data and apply mask
     f_u = sanitize_data(f_u, jnp.nan, mask)

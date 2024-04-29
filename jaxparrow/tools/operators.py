@@ -75,7 +75,7 @@ def derivative(
 ) -> Float[Array, "lat lon"]:
     """
     Differentiates a ``field`` using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x').
-    Uses stencil of width ``stencil_width`` to compute the derivative of the field, as advised by Arbic et al. _[5].
+    Uses stencil of width ``stencil_width`` to compute the derivative of the field, as advised by Arbic et al. [5]_.
     Applies 0 ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
     to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain.
 

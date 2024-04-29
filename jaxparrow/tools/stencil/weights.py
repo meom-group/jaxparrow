@@ -108,7 +108,29 @@ def weights(
 ) -> Float[Array, "field width"]:
     """
     Compute the stencil weights of every field point using Fornberg's algorithm.
-    At the domain boundaries, or in the presence of land, the stencil width is decreased adequately.
+    At the domain boundaries, or in the presence of land, the stencil width is decreased adequately,
+    and weights are padded with zeros.
+
+    Parameters
+    ----------
+    field : Float[Array, "field"]
+        1d field used to infer land positions
+    dx : Float[Array, "field"]
+       1d grid of spatial steps
+    stencil_width : int
+        Width of the stencil
+    pad_left : bool
+        Padding direction.
+        For example, following NEMO convention [1]_,
+        interpolating from U to T points requires a `left` padding
+        (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
+        and interpolating from T to U points a `right` padding
+        (the midpoint between $T_i$ and $T_{i+1}$ corresponds to $U_i$)
+
+    Returns
+    -------
+    stencil_weights : Float[Array, "field stencil_width"]
+       Tensor of stencil weights for every ``field`` point
     """
     stencil_half_width = stencil_width // 2
     stencil_mask = mask(field, stencil_half_width, pad_left)

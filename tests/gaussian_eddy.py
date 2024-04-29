@@ -24,7 +24,7 @@ def simulate_gaussian_eddy(
     u_geos_t, v_geos_t = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
     u_cyclo_t, v_cyclo_t = simulate_gaussian_cyclo(r0, jnp.arctan2(Y, X), u_geos_t, v_geos_t, coriolis_factor)
 
-    stencil_weights = stencil.compute_stencil_weights(ssh, dxy=dXY)
+    stencil_weights = stencil.compute_stencil_weights(ssh, dx=dXY, dy=dXY)
 
     return (X, Y, R, stencil_weights, coriolis_factor, ssh,
             u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t)

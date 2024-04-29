@@ -54,11 +54,30 @@ def mask(
         field: Float[Array, "field"],
         stencil_half_width: int,
         pad_left: bool
-) -> Bool[Array, "stencil_order field"]:
+) -> Bool[Array, "stencil_half_width field"]:
     """
     Compute the stencil's mask,
     i.e., indicates for each point of the ``field`` if the stencil of half-width ``half_width`` can be applied
     based on the domain's boundaries and the presence of land.
+
+    Parameters
+    ----------
+    field : Float[Array, "field"]
+        1d field used to infer land positions
+    stencil_half_width : int
+        Half-width of the stencil
+    pad_left : bool
+        Padding direction.
+        For example, following NEMO convention [1]_,
+        interpolating from U to T points requires a `left` padding
+        (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
+        and interpolating from T to U points a `right` padding
+        (the midpoint between $T_i$ and $T_{i+1}$ corresponds to $U_i$)
+
+    Returns
+    -------
+    stencil_mask : Bool[Array, "stencil_half_width field"]
+       Tensor of boolean for every stencil half-width and ``field`` point
     """
     cum_mask = jnp.zeros_like(field, dtype=jnp.bool)
     stencil_mask = jnp.zeros((stencil_half_width, field.size), dtype=jnp.bool)

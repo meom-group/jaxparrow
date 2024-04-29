@@ -11,7 +11,7 @@ def derivative(
 ) -> Float[Array, "field"]:
     """
     Differentiates a 1d ``field``, using finite differences, and a stencil of width ``stencil_width``.
-    Stencil weights are computed using Fornberg's algorithm _[6].
+    Stencil weights are computed using Fornberg's algorithm [6]_.
     Applies `0` padding to the `left` or to the `right`.
 
     Parameters
@@ -28,6 +28,9 @@ def derivative(
     field : Float[Array, "field"]
         Differentiated field
     """
+    def nandot(arr1, arr2):
+        return jnp.nansum(arr1 * arr2)
+
     stencil_width = stencil_weights.shape[1]
     stencil_half_width = stencil_width // 2
 
@@ -36,9 +39,11 @@ def derivative(
         lambda: jnp.pad(field, (stencil_half_width, stencil_half_width - 1)),
         lambda: jnp.pad(field, (stencil_half_width - 1, stencil_half_width))
     )
-    padded_idx = jnp.arange(padded_field.size - stencil_width + 1)[:, None] + jnp.arange(stencil_width)[None, :]
-    field_stencil = padded_field[padded_idx]
+    stencil_idx = jnp.arange(field.size)[:, None] + jnp.arange(stencil_width)[None, :]
+    field_stencil = padded_field[stencil_idx]
 
-    field_derivative = vmap(jnp.dot)(stencil_weights, field_stencil)
+    field_derivative = vmap(nandot)(stencil_weights, field_stencil)
+
+    field_derivative = jnp.where(jnp.isfinite(field), field_derivative, jnp.nan)
 
     return field_derivative

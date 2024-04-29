@@ -142,13 +142,13 @@ def cyclogeostrophy(
     # Compute geostrophic SSC velocity field
     u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = geostrophy(ssh_t, lat_t, lon_t, is_land, return_grids=True)
 
-    # Compute stencil weights and Coriolis factors
-    stencil_weights_u = stencil.compute_stencil_weights(ssh_t, lat_u, lon_u, stencil_width)
-    stencil_weights_v = stencil.compute_stencil_weights(ssh_t, lat_v, lon_v, stencil_width)
+    # Compute stencil weights
+    stencil_weights_u = stencil.compute_stencil_weights(u_geos_u, lat_u, lon_u, stencil_width=stencil_width)
+    stencil_weights_v = stencil.compute_stencil_weights(v_geos_v, lat_v, lon_v, stencil_width=stencil_width)
+
+    # Compute Coriolis factors
     coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
-
-    # Handle spurious and masked data
     coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, is_land)
     coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, is_land)
 
@@ -284,7 +284,7 @@ def _iterative(
             *pytree
         )
 
-    # apply updates  TODO: replace lax.while_loop with for_iloop or scan
+    # apply updates  TODO: replace lax.while_loop with scan
     u_cyclo, v_cyclo, _, _, losses, _ = lax.while_loop(  # noqa
         lambda args: (args[-1] < n_it) | jnp.any(args[2] != 1),
         step_fn,
@@ -361,7 +361,7 @@ def _solve(
     def step_fn(pytree):
         return _var_step(mask, loss_fn, optim,  return_losses, *pytree)
 
-    # TODO: replace lax.while_loop with for_iloop or scan
+    # TODO: replace lax.while_loop with scan
     u_cyclo_u, v_cyclo_v, opt_state, losses, i = lax.while_loop(  # noqa
         lambda args: args[-1] < n_it,
         step_fn,

@@ -15,10 +15,8 @@ from jaxparrow.tools.sanitize import init_land_mask
 sys.path.extend([os.path.join(os.path.dirname(os.getcwd()), "tests")])
 from tests import gaussian_eddy as ge  # noqa
 
-%reload_ext
-autoreload
-%autoreload
-2
+%reload_ext autoreload
+%autoreload 2
 ```
 
 # Gaussian eddy
@@ -42,7 +40,7 @@ dxy = 10e3
 
 
 ```python
-X, Y, R, dXY, coriolis_factor, ssh, u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t, = ge.simulate_gaussian_eddy(
+X, Y, R, stencil_weights, coriolis_factor, ssh, u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t, = ge.simulate_gaussian_eddy(
     R0, 
     dxy, 
     ETA0, 
@@ -147,7 +145,7 @@ $f\mathbf{k} \times \mathbf{u_g} = -g \nabla \eta$
 
 
 ```python
-u_geos_est, v_geos_est = _geostrophy(ssh, dXY, dXY, coriolis_factor)
+u_geos_est, v_geos_est = _geostrophy(ssh, stencil_weights, coriolis_factor)
 
 u_geos_est_t = interpolation(u_geos_est, axis=1, padding="left")
 v_geos_est_t = interpolation(v_geos_est, axis=0, padding="left")
@@ -207,7 +205,7 @@ ge.compute_rmse(u_geos_t, u_geos_est_t), ge.compute_rmse(v_geos_t, v_geos_est_t)
 
 
 
-    (Array(0.0068815, dtype=float32), Array(0.0068815, dtype=float32))
+    (Array(0.00623252, dtype=float32), Array(0.00623252, dtype=float32))
 
 
 
@@ -273,7 +271,7 @@ $\mathbf{u} - \frac{\mathbf{k}}{f} \times (\mathbf{u} \cdot \nabla \mathbf{u}) =
 ```python
 u_geos_u = u_geos_est
 v_geos_v = v_geos_est
-mask = init_land_mask(u_geos_t)
+mask = init_land_mask(u_geos_u)
 ```
 
 #### Variational estimation
@@ -281,9 +279,9 @@ mask = init_land_mask(u_geos_t)
 
 ```python
 optim = optax.sgd(learning_rate=5e-2)
-u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, stencil_weights, stencil_weights,
                                            coriolis_factor, coriolis_factor, mask,
-                                           n_it=20, optim=optim,
+                                           n_it=200, optim=optim,
                                            return_losses=False)
 
 u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
@@ -344,7 +342,7 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00562905, dtype=float32), Array(0.00562905, dtype=float32))
+    (Array(0.01039584, dtype=float32), Array(0.01039584, dtype=float32))
 
 
 
@@ -358,7 +356,7 @@ Use of a convolution filter when computing the residuals.
 
 
 ```python
-u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, stencil_weights, stencil_weights,
                                          coriolis_factor, coriolis_factor, mask,
                                          n_it=20, res_eps=0.01, 
                                          use_res_filter=True, res_filter_size=3, 
@@ -422,7 +420,7 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00847729, dtype=float32), Array(0.00847729, dtype=float32))
+    (Array(0.00948416, dtype=float32), Array(0.00948416, dtype=float32))
 
 
 
@@ -432,7 +430,7 @@ No convolution filter, original approach.
 
 
 ```python
-u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
+u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, stencil_weights, stencil_weights,
                                          coriolis_factor, coriolis_factor, mask,
                                          n_it=20, res_eps=0.01, 
                                          use_res_filter=False, res_filter_size=1, 
@@ -496,6 +494,6 @@ ge.compute_rmse(u_cyclo_t, u_cyclo_est_t), ge.compute_rmse(v_cyclo_t, v_cyclo_es
 
 
 
-    (Array(0.00861186, dtype=float32), Array(0.00861186, dtype=float32))
+    (Array(0.00967174, dtype=float32), Array(0.00967175, dtype=float32))
 
 
