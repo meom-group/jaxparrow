@@ -9,6 +9,7 @@ from .sanitize import handle_land_boundary
 
 def interpolation(
         field: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"],
         axis: Literal[0, 1],
         padding: Literal["left", "right"]
 ) -> Float[Array, "lat lon"]:
@@ -22,6 +23,8 @@ def interpolation(
     ----------
     field : Float[Array, "lat lon"]
         Field to interpolate
+    mask : Float[Array, "lat lon"]
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
     axis : Literal[0, 1]
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
@@ -37,36 +40,41 @@ def interpolation(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_interpolate(field_b, field_f, pad_left):
-        field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
+    def do_interpolate(field_b, field_f, mask_b, mask_f, pad_left):
+        field_b, field_f = handle_land_boundary(field_b, field_f, mask_b, mask_f, pad_left)
         return 0.5 * (field_b + field_f)
 
-    def axis0(arr, pad_left):
-        field_b, field_f = arr[:-1, :], arr[1:, :]
-        midpoint_values = do_interpolate(field_b, field_f, pad_left)
+    def axis0(pad_left):
+        field_b, field_f = field[:-1, :], field[1:, :]
+        mask_b, mask_f = mask[:-1, :], mask[1:, :]
+        midpoint_values = do_interpolate(field_b, field_f, mask_b, mask_f, pad_left)
+
         arr = lax.cond(
             pad_left,
-            lambda operands: operands[0].at[1:, :].set(operands[1]),
-            lambda operands: operands[0].at[:-1, :].set(operands[1]),
-            (arr, midpoint_values)
+            lambda: field.at[1:, :].set(midpoint_values),
+            lambda: field.at[:-1, :].set(midpoint_values)
         )
+
         return arr
 
-    def axis1(arr, pad_left):
-        field_b, field_f = arr[:, :-1], arr[:, 1:]
-        midpoint_values = do_interpolate(field_b, field_f, pad_left)
+    def axis1(pad_left):
+        field_b, field_f = field[:, :-1], field[:, 1:]
+        mask_b, mask_f = mask[:, :-1], mask[:, 1:]
+        midpoint_values = do_interpolate(field_b, field_f, mask_b, mask_f, pad_left)
+
         arr = lax.cond(
             pad_left,
-            lambda operands: operands[0].at[:, 1:].set(operands[1]),
-            lambda operands: operands[0].at[:, :-1].set(operands[1]),
-            (arr, midpoint_values)
+            lambda: field.at[:, 1:].set(midpoint_values),
+            lambda: field.at[:, :-1].set(midpoint_values)
         )
+
         return arr
 
     field = lax.cond(
         axis == 0,
-        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
-        (field, padding == "left")
+        lambda pad_left: axis0(pad_left),
+        lambda pad_left: axis1(pad_left),
+        padding == "left"
     )
 
     return field
@@ -75,6 +83,7 @@ def interpolation(
 def derivative(
         field: Float[Array, "lat lon"],
         dxy: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"],
         axis: Literal[0, 1],
         padding: Literal["left", "right"]
 ) -> Float[Array, "lat lon"]:
@@ -90,6 +99,8 @@ def derivative(
         Field to differentiate
     dxy : Float[Array, "lat lon"]
         Spatial steps
+    mask : Float[Array, "lat lon"]
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
     axis : Literal[0, 1]
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
@@ -105,40 +116,41 @@ def derivative(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_differentiate(field_b, field_f, pad_left):
-        field_b, field_f = handle_land_boundary(field_b, field_f, pad_left)
+    def do_differentiate(field_b, field_f, mask_b, mask_f, pad_left):
+        field_b, field_f = handle_land_boundary(field_b, field_f, mask_b, mask_f, pad_left)
         return field_f - field_b
 
-    def axis0(_field, pad_left):
-        field_b, field_f = _field[:-1, :], _field[1:, :]
-        midpoint_values = do_differentiate(field_b, field_f, pad_left)
+    def axis0(pad_left):
+        field_b, field_f = field[:-1, :], field[1:, :]
+        mask_b, mask_f = mask[:-1, :], mask[1:, :]
+        midpoint_values = do_differentiate(field_b, field_f, mask_b, mask_f, pad_left)
 
-        _field = lax.cond(
+        arr = lax.cond(
             pad_left,
-            lambda operand: jnp.pad(operand, pad_width=((1, 0), (0, 0)), mode="edge"),
-            lambda operand: jnp.pad(operand, pad_width=((0, 1), (0, 0)), mode="edge"),
-            midpoint_values
+            lambda: jnp.pad(midpoint_values, pad_width=((1, 0), (0, 0)), mode="edge"),
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 1), (0, 0)), mode="edge")
         )
 
-        return _field
+        return arr
 
-    def axis1(_field, pad_left):
-        field_b, field_f = _field[:, :-1], _field[:, 1:]
-        midpoint_values = do_differentiate(field_b, field_f, pad_left)
+    def axis1(pad_left):
+        field_b, field_f = field[:, :-1], field[:, 1:]
+        mask_b, mask_f = mask[:, :-1], mask[:, 1:]
+        midpoint_values = do_differentiate(field_b, field_f, mask_b, mask_f, pad_left)
 
-        _field = lax.cond(
+        arr = lax.cond(
             pad_left,
-            lambda operand: jnp.pad(operand, pad_width=((0, 0), (1, 0)), mode="edge"),
-            lambda operand: jnp.pad(operand, pad_width=((0, 0), (0, 1)), mode="edge"),
-            midpoint_values
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (1, 0)), mode="edge"),
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (0, 1)), mode="edge")
         )
 
-        return _field
+        return arr
 
     field = lax.cond(
         axis == 0,
-        lambda operands: axis0(*operands), lambda operands: axis1(*operands),
-        (field, padding == "left")
+        lambda pad_left: axis0(pad_left),
+        lambda pad_left: axis1(pad_left),
+        padding == "left"
     )
 
     return field / dxy

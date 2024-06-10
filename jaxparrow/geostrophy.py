@@ -61,12 +61,9 @@ def geostrophy(
     coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
 
     # Handle spurious and masked data
-    ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, is_land)  # avoid spurious velocities near the coast
-    dx_t = sanitize.sanitize_data(dx_t, jnp.nan, is_land)
-    dy_t = sanitize.sanitize_data(dy_t, jnp.nan, is_land)
-    coriolis_factor_t = sanitize.sanitize_data(coriolis_factor_t, jnp.nan, is_land)
+    ssh_t = sanitize.sanitize_data(ssh_t, 0, is_land)
 
-    u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t)
+    u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t, is_land)
 
     # Handle masked data
     u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
@@ -87,21 +84,26 @@ def _geostrophy(
         ssh_t: Float[Array, "lat lon"],
         dx_t: Float[Array, "lat lon"],
         dy_t: Float[Array, "lat lon"],
-        coriolis_factor_t: Float[Array, "lat lon"]
+        coriolis_factor_t: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     # Compute the gradient of the ssh
-    ssh_dx_u = operators.derivative(ssh_t, dx_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-    ssh_dy_v = operators.derivative(ssh_t, dy_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    ssh_dx_u = operators.derivative(ssh_t, dx_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    ssh_dy_v = operators.derivative(ssh_t, dy_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     # Interpolate the data
-    ssh_dy_t = operators.interpolation(ssh_dy_v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
-    ssh_dy_u = operators.interpolation(ssh_dy_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    ssh_dy_t = operators.interpolation(ssh_dy_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    ssh_dy_u = operators.interpolation(ssh_dy_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
-    ssh_dx_t = operators.interpolation(ssh_dx_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-    ssh_dx_v = operators.interpolation(ssh_dx_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    ssh_dx_t = operators.interpolation(ssh_dx_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    ssh_dx_v = operators.interpolation(ssh_dx_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
-    coriolis_factor_u = operators.interpolation(coriolis_factor_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-    coriolis_factor_v = operators.interpolation(coriolis_factor_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    coriolis_factor_u = operators.interpolation(
+        coriolis_factor_t, mask, axis=1, padding="right"
+    )  # (T(i), T(i+1)) -> U(i)
+    coriolis_factor_v = operators.interpolation(
+        coriolis_factor_t, mask, axis=0, padding="right"
+    )  # (T(j), T(j+1)) -> V(j)
 
     # Computing the geostrophic velocities
     u_geos_u = - geometry.GRAVITY * ssh_dy_u / coriolis_factor_u  # U(i)

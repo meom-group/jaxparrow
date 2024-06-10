@@ -15,8 +15,6 @@ from .geostrophy import geostrophy
 N_IT_IT = 20
 #: Default residual tolerance for Penven and Ioannou approaches
 RES_EPS_IT = 0.01
-#: Default residual value used during the first iteration for Penven and Ioannou approaches
-RES_INIT_IT = "same"
 #: Default size of the grid points used to compute the residual for Ioannou's approach
 RES_FILTER_SIZE_IT = 3
 
@@ -143,12 +141,8 @@ def cyclogeostrophy(
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
     # Handle spurious and masked data
-    dx_u = sanitize.sanitize_data(dx_u, jnp.nan, is_land)
-    dy_u = sanitize.sanitize_data(dy_u, jnp.nan, is_land)
-    dx_v = sanitize.sanitize_data(dx_v, jnp.nan, is_land)
-    dy_v = sanitize.sanitize_data(dy_v, jnp.nan, is_land)
-    coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, is_land)
-    coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, is_land)
+    u_geos_u = sanitize.sanitize_data(u_geos_u, 0, is_land)
+    v_geos_v = sanitize.sanitize_data(v_geos_v, 0, is_land)
 
     if method == "variational":
         if n_it is None:
@@ -220,7 +214,6 @@ def _it_step(
 
     # compute dist to u_cyclo and v_cyclo
     res_np1 = jnp.abs(u_np1 - u_cyclo) + jnp.abs(v_np1 - v_cyclo)
-    res_np1 = sanitize.sanitize_data(res_np1, 0., mask)
     res_np1 = lax.cond(
         use_res_filter,  # apply filter
         lambda operands: jsp.signal.convolve(operands[0], operands[1], mode="same", method="fft") / operands[2],
@@ -318,7 +311,6 @@ def _var_loss_fn(
 
 
 def _var_step(
-        mask: Float[Array, "lat lon"],
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         optim: optax.GradientTransformation,
         return_losses: bool,
@@ -331,8 +323,6 @@ def _var_step(
     params = (u_cyclo_u, v_cyclo_v)
     # evaluate the cost function and compute its gradient
     loss, grads = value_and_grad(loss_fn)(params)
-    # make sure to remove nan values
-    grads = (sanitize.sanitize_data(grads[0], 0., mask), sanitize.sanitize_data(grads[1], 0., mask))
     # update the optimizer
     updates, opt_state = optim.update(grads, opt_state, params)
     # apply updates to the parameters
@@ -353,7 +343,6 @@ def _var_step(
 def _solve(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         n_it: int,
         optim: optax.GradientTransformation,
@@ -361,7 +350,7 @@ def _solve(
 ) -> [Float[Array, "lat lon"], ...]:
     # define step partial: freeze constant over iterations
     def step_fn(pytree):
-        return _var_step(mask, loss_fn, optim,  return_losses, *pytree)
+        return _var_step(loss_fn, optim,  return_losses, *pytree)
 
     u_cyclo_u, v_cyclo_v, opt_state, losses, i = lax.while_loop(  # noqa
         lambda args: args[-1] < n_it,
@@ -393,7 +382,7 @@ def _variational(
         u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
     )
 
-    return _solve(u_geos_u, v_geos_v, mask, loss_fn, n_it, optim, return_losses)
+    return _solve(u_geos_u, v_geos_v, loss_fn, n_it, optim, return_losses)
 
 
 def _cyclogeostrophic_diff(
@@ -406,6 +395,6 @@ def _cyclogeostrophic_diff(
         coriolis_factor_u: Float[Array, "lat lon"],
         coriolis_factor_v: Float[Array, "lat lon"]
 ) -> Float[Scalar, ""]:
-    J_u = jnp.nansum((u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u) ** 2)
-    J_v = jnp.nansum((v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v) ** 2)
-    return J_u + J_v
+    j_u = ((u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u) ** 2).sum()
+    j_v = ((v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v) ** 2).sum()
+    return j_u + j_v

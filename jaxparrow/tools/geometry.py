@@ -96,14 +96,17 @@ def compute_uv_grids(
     lon_v : Float[Array, "lat lon"]
         Longitudes of the V grid
     """
-    lat_u = interpolation(lat_t, axis=1, padding="right")
+    lat_mask = jnp.zeros_like(lat_t, dtype=bool)
+    lon_mask = jnp.zeros_like(lon_t, dtype=bool)
+
+    lat_u = interpolation(lat_t, lat_mask, axis=1, padding="right")
     lat_u = lat_u.at[:, -1].set(2 * lat_t[:, -1] - lat_t[:, -2])
-    lon_u = interpolation(lon_t, axis=1, padding="right")
+    lon_u = interpolation(lon_t, lon_mask, axis=1, padding="right")
     lon_u = lon_u.at[:, -1].set(2 * lon_t[:, -1] - lon_t[:, -2])
 
-    lat_v = interpolation(lat_t, axis=0, padding="right")
+    lat_v = interpolation(lat_t, lat_mask, axis=0, padding="right")
     lat_v = lat_v.at[-1, :].set(2 * lat_t[-1, :] - lat_t[-2, :])
-    lon_v = interpolation(lon_t, axis=0, padding="right")
+    lon_v = interpolation(lon_t, lon_mask, axis=0, padding="right")
     lon_v = lon_v.at[-1, :].set(2 * lon_t[-1, :] - lon_t[-2, :])
 
     return lat_u, lon_u, lat_v, lon_v

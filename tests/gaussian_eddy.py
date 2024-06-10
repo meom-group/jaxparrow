@@ -10,7 +10,7 @@ def simulate_gaussian_eddy(
         eta0: float,
         latitude: int
 ) -> [jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array,
-      jax.Array, jax.Array]:
+      jax.Array]:
     l0 = r0 * 2  # limit boundary impact
     xy = jnp.arange(0, l0, dxy)
     xy = jnp.concatenate((-xy[::-1][:-1], xy))
@@ -23,15 +23,12 @@ def simulate_gaussian_eddy(
     u_geos_t, v_geos_t = simulate_gaussian_geos(r0, X, Y, ssh, coriolis_factor)
     u_cyclo_t, v_cyclo_t = simulate_gaussian_cyclo(r0, jnp.arctan2(Y, X), u_geos_t, v_geos_t, coriolis_factor)
 
-    return (X, Y, R, dXY, coriolis_factor, ssh,
-            u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t)
+    mask = jax.numpy.full_like(ssh, 0, dtype=bool)  # no land in square oceans
+
+    return X, Y, R, dXY, coriolis_factor, ssh, u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t, mask
 
 
-def simulate_gaussian_ssh(
-        r0: float,
-        eta0: float,
-        R: jax.Array
-) -> jax.Array:
+def simulate_gaussian_ssh(r0: float, eta0: float, R: jax.Array) -> jax.Array:
     return eta0 * jnp.exp(-(R / r0)**2)
 
 
@@ -65,8 +62,5 @@ def simulate_gaussian_cyclo(
     return u_cyclo, v_cyclo
 
 
-def compute_rmse(
-        y: jax.Array,
-        y_hat: jax.Array
-) -> jax.Array:
+def compute_rmse(y: jax.Array, y_hat: jax.Array) -> jax.Array:
     return jnp.sqrt(jnp.nanmean((y - y_hat)**2))
