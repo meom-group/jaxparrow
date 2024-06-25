@@ -55,17 +55,16 @@ def _u_advection_v(
         dy_u: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
-    dudx_t = derivative(u_u, dx_u, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
-    dudx_v = interpolation(dudx_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    dudx_t = derivative(u_u, dx_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
+    dudx_v = interpolation(dudx_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
-    dudy_f = derivative(u_u, dy_u, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    dudy_v = interpolation(dudy_f, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
+    dudy_f = derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
+    dudy_v = interpolation(dudy_f, mask, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
 
-    u_t = interpolation(u_u, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
-    u_v = interpolation(u_t, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    u_t = interpolation(u_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
+    u_v = interpolation(u_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
     u_adv_v = u_v * dudx_v + v_v * dudy_v  # V(j)
-    u_adv_v = sanitize_data(u_adv_v, 0., mask)
 
     return u_adv_v
 
@@ -77,17 +76,16 @@ def _v_advection_u(
         dy_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
-    dvdx_f = derivative(v_v, dx_v, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dvdx_u = interpolation(dvdx_f, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
+    dvdx_f = derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
+    dvdx_u = interpolation(dvdx_f, mask, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
 
-    dvdy_t = derivative(v_v, dy_v, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
-    dvdy_u = interpolation(dvdy_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    dvdy_t = derivative(v_v, dy_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
+    dvdy_u = interpolation(dvdy_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
-    v_t = interpolation(v_v, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
-    v_u = interpolation(v_t, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    v_t = interpolation(v_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
+    v_u = interpolation(v_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
 
     v_adv_u = u_u * dvdx_u + v_u * dvdy_u  # U(i)
-    v_adv_u = sanitize_data(v_adv_u, 0., mask)
 
     return v_adv_u
 
@@ -95,6 +93,7 @@ def _v_advection_u(
 def magnitude(
         u: Float[Array, "lat lon"],
         v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"] = None,
         interpolate: bool = True
 ) -> Float[Array, "lat lon"]:
     """
@@ -107,6 +106,10 @@ def magnitude(
         U component of the velocity field (on the U or T grid)
     v : Float[Array, "lat lon"]
         V component of the velocity field (on the V or T grid)
+    mask : Float[Array, "lat lon"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+
+        If not provided, inferred from ``u`` `nan` values
     interpolate : bool, optional
         If `True`, the velocity components are assumed to be located on the U and V grids,
         and are interpolated to the T one (following NEMO convention [1]_).
@@ -119,14 +122,18 @@ def magnitude(
     magn_t : Float[Array, "lat lon"]
         Magnitude of the velocity field, on the T grid
     """
+    # Make sure the mask is initialized
+    mask = init_land_mask(u, mask)
+
     if interpolate:
         # interpolate to the T point
-        u_t = interpolation(u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-        v_t = interpolation(v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+        u_t = interpolation(u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+        v_t = interpolation(v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
     else:
         u_t, v_t = u, v
 
     magn_t = jnp.sqrt(u_t ** 2 + v_t ** 2)
+    magn_t = sanitize_data(magn_t, jnp.nan, mask)
 
     return magn_t
 
@@ -184,19 +191,19 @@ def normalized_relative_vorticity(
     f_u = compute_coriolis_factor(lat_u)
 
     # Handle spurious data and apply mask
-    dy_u = sanitize_data(dy_u, jnp.nan, mask)
-    dx_v = sanitize_data(dx_v, jnp.nan, mask)
-    f_u = sanitize_data(f_u, jnp.nan, mask)
+    # dy_u = sanitize_data(dy_u, jnp.nan, mask)
+    # dx_v = sanitize_data(dx_v, jnp.nan, mask)
+    # f_u = sanitize_data(f_u, jnp.nan, mask)
 
     # Compute the normalized relative vorticity
-    du_dy_f = derivative(u, dy_u, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    dv_dx_f = derivative(v, dx_v, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    f_f = interpolation(f_u, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
+    du_dy_f = derivative(u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
+    dv_dx_f = derivative(v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
+    f_f = interpolation(f_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
     w_f = (dv_dx_f - du_dy_f) / f_f  # F(j)
 
     if interpolate:
-        w_u = interpolation(w_f, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
-        w = interpolation(w_u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+        w_u = interpolation(w_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
+        w = interpolation(w_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
     else:
         w = w_f
 
@@ -208,6 +215,7 @@ def normalized_relative_vorticity(
 def kinetic_energy(
         u: Float[Array, "lat lon"],
         v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"] = None,
         interpolate: bool = True
 ) -> Float[Array, "lat lon"]:
     """
@@ -220,6 +228,10 @@ def kinetic_energy(
         U component of the velocity field (on the U grid)
     v : Float[Array, "lat lon"]
         V component of the velocity field (on the V grid)
+    mask : Float[Array, "lat lon"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+
+        If not provided, inferred from ``u`` `nan` values
     interpolate : bool, optional
         If `True`, the velocity components are assumed to be located on the U and V grids,
         and are interpolated to the T one (following NEMO convention [1]_).
@@ -232,10 +244,13 @@ def kinetic_energy(
     eke : Float[Array, "lat lon"]
         The Kinetic Energy on the T grid
     """
+    # Make sure the mask is initialized
+    mask = init_land_mask(u, mask)
+
     if interpolate:
         # interpolate to the T point
-        u_t = interpolation(u, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-        v_t = interpolation(v, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+        u_t = interpolation(u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+        v_t = interpolation(v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
     else:
         u_t, v_t = u, v
 
