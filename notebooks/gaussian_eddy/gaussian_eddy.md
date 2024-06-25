@@ -149,8 +149,8 @@ $f\mathbf{k} \times \mathbf{u_g} = -g \nabla \eta$
 ```python
 u_geos_est, v_geos_est = _geostrophy(ssh, dXY, dXY, coriolis_factor)
 
-u_geos_est_t = interpolation(u_geos_est, axis=1, padding="left")
-v_geos_est_t = interpolation(v_geos_est, axis=0, padding="left")
+u_geos_est_t = interpolation(u_geos_est, mask, axis=1, padding="left")
+v_geos_est_t = interpolation(v_geos_est, mask, axis=0, padding="left")
 
 azim_geos_est = magnitude(u_geos_est_t, v_geos_est_t, interpolate=False)
 ```
@@ -285,8 +285,8 @@ u_cyclo_est, v_cyclo_est, _ = _variational(u_geos_u, v_geos_v, dXY, dXY, dXY, dX
                                            coriolis_factor, coriolis_factor, mask,
                                            n_it=20, optim=optim)
 
-u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
-v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+u_cyclo_est_t = interpolation(u_cyclo_est, mask, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, mask, axis=0, padding="left")
 
 azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
@@ -363,8 +363,8 @@ u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                          use_res_filter=True, res_filter_size=3, 
                                          return_losses=False)
 
-u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
-v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+u_cyclo_est_t = interpolation(u_cyclo_est, mask, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, mask, axis=0, padding="left")
 
 azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
@@ -437,8 +437,8 @@ u_cyclo_est, v_cyclo_est, _ = _iterative(u_geos_u, v_geos_v, dXY, dXY, dXY, dXY,
                                          use_res_filter=False, res_filter_size=1, 
                                          return_losses=False)
 
-u_cyclo_est_t = interpolation(u_cyclo_est, axis=1, padding="left")
-v_cyclo_est_t = interpolation(v_cyclo_est, axis=0, padding="left")
+u_cyclo_est_t = interpolation(u_cyclo_est, mask, axis=1, padding="left")
+v_cyclo_est_t = interpolation(v_cyclo_est, mask, axis=0, padding="left")
 
 azim_cyclo_est = magnitude(u_cyclo_est_t, v_cyclo_est_t, interpolate=False)
 ```
