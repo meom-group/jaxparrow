@@ -32,7 +32,7 @@ def get_figsize(width_ratio, wh_ratio=1):
     return fig_width, fig_height
 ```
 
-# Alboran sea
+# Method validation using the eNATL60 run
 
 ## Input data
 

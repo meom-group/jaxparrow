@@ -155,7 +155,7 @@ def cyclogeostrophy(
             raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
                             "an optimizer.")
         res = _variational(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
-                           n_it, optim, return_losses)
+                           n_it, optim)
     elif method == "iterative":
         if n_it is None:
             n_it = N_IT_IT
@@ -202,11 +202,8 @@ def _it_step(
         u_cyclo: Float[Array, "lat lon"],
         v_cyclo: Float[Array, "lat lon"],
         mask_it: Float[Array, "lat lon"],
-        res_n: Float[Array, "lat lon"],
-        losses: Float[Array, "n_it"],
-        i: int
-) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"],
-      Float[Array, "n_it"], int]:
+        res_n: Float[Array, "lat lon"]
+) -> [[Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], int], float]:
     # next it
     u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, dx_u, dy_u, dx_v, dy_v, mask)
     u_np1 = u_geos_u - v_adv_u / coriolis_factor_u
@@ -225,11 +222,12 @@ def _it_step(
     mask_n = jnp.where(res_np1 <= res_n, 0, 1)  # nan comp. equiv. to jnp.where(res_np1 > res_n, 1, 0)
 
     # compute loss
-    losses = lax.cond(
+    loss = lax.cond(
         return_losses,
-        lambda operands: operands[0].at[operands[1]].set(_cyclogeostrophic_diff(*operands[2:])),
-        lambda operands: operands[0],
-        (losses, i, u_geos_u, v_geos_v, u_cyclo, v_cyclo, u_adv_v, v_adv_u, coriolis_factor_u, coriolis_factor_v)
+        lambda: _cyclogeostrophic_diff(
+            u_geos_u, v_geos_v, u_cyclo, v_cyclo, u_adv_v, v_adv_u, coriolis_factor_u, coriolis_factor_v
+        ),
+        lambda: jnp.nan
     )
 
     # update cyclogeostrophic velocities
@@ -240,9 +238,7 @@ def _it_step(
     mask_it = jnp.maximum(mask_it, jnp.maximum(mask_jnp1, mask_n))
     res_n = res_np1
 
-    i += 1
-
-    return u_cyclo, v_cyclo, mask_it, res_n, losses, i
+    return (u_cyclo, v_cyclo, mask_it, res_n), loss
 
 
 @partial(jit, static_argnames=("n_it", "res_filter_size"))
@@ -267,22 +263,21 @@ def _iterative(
     res_weights = jsp.signal.convolve(jnp.ones_like(u_geos_u), res_filter, mode="same", method="fft")
 
     # define step partial: freeze constant over iterations
-    def step_fn(pytree):
+    def step_fn(carry, _):
         return _it_step(
             u_geos_u, v_geos_v,
             dx_u, dx_v, dy_u, dy_v,
             coriolis_factor_u, coriolis_factor_v, mask,
             res_eps, res_filter, res_weights,
             use_res_filter, return_losses,
-            *pytree
+            *carry
         )
 
     # apply updates
-    u_cyclo, v_cyclo, _, _, losses, _ = lax.while_loop(  # noqa
-        lambda args: (args[-1] < n_it) | jnp.any(args[2] != 1),
+    (u_cyclo, v_cyclo, _, _), losses = lax.scan(
         step_fn,
-        (u_geos_u, v_geos_v, mask.astype(int), jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v)),
-         jnp.ones(n_it) * jnp.nan, 0)
+        (u_geos_u, v_geos_v, mask.astype(int), jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v))),
+        xs=None, length=n_it
     )
 
     return u_cyclo, v_cyclo, losses
@@ -313,13 +308,10 @@ def _var_loss_fn(
 def _var_step(
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         optim: optax.GradientTransformation,
-        return_losses: bool,
         u_cyclo_u: Float[Array, "lat lon"],
         v_cyclo_v: Float[Array, "lat lon"],
-        opt_state: optax.OptState,
-        losses: Float[Array, "n_it"],
-        i: int
-) -> [Float[Array, "lat lon"], ...]:
+        opt_state: optax.OptState
+) -> [[Float[Array, "lat lon"], ...], float]:
     params = (u_cyclo_u, v_cyclo_v)
     # evaluate the cost function and compute its gradient
     loss, grads = value_and_grad(loss_fn)(params)
@@ -328,16 +320,7 @@ def _var_step(
     # apply updates to the parameters
     u_n, v_n = optax.apply_updates(params, updates)
 
-    # store loss
-    losses = lax.cond(
-        return_losses,
-        lambda operands: operands[0].at[operands[1]].set(operands[2]), lambda operands: operands[0],
-        (losses, i, loss)
-    )
-
-    i += 1
-
-    return u_n, v_n, opt_state, losses, i
+    return (u_n, v_n, opt_state), loss
 
 
 def _solve(
@@ -345,17 +328,16 @@ def _solve(
         v_geos_v: Float[Array, "lat lon"],
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         n_it: int,
-        optim: optax.GradientTransformation,
-        return_losses: bool
+        optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define step partial: freeze constant over iterations
-    def step_fn(pytree):
-        return _var_step(loss_fn, optim,  return_losses, *pytree)
+    def step_fn(carry, _):
+        return _var_step(loss_fn, optim, *carry)
 
-    u_cyclo_u, v_cyclo_v, opt_state, losses, i = lax.while_loop(  # noqa
-        lambda args: args[-1] < n_it,
+    (u_cyclo_u, v_cyclo_v, _), losses = lax.scan(
         step_fn,
-        (u_geos_u, v_geos_v, optim.init((u_geos_u, v_geos_v)), jnp.ones(n_it) * jnp.nan, 0)
+        (u_geos_u, v_geos_v, optim.init((u_geos_u, v_geos_v))),
+        xs=None, length=n_it
     )
 
     return u_cyclo_u, v_cyclo_v, losses
@@ -373,8 +355,7 @@ def _variational(
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
         n_it: int,
-        optim: optax.GradientTransformation,
-        return_losses: bool
+        optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
@@ -382,7 +363,7 @@ def _variational(
         u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
     )
 
-    return _solve(u_geos_u, v_geos_v, loss_fn, n_it, optim, return_losses)
+    return _solve(u_geos_u, v_geos_v, loss_fn, n_it, optim)
 
 
 def _cyclogeostrophic_diff(
