@@ -27,7 +27,7 @@ def sanitize_data(
     arr : Float[Array, "lat lon"]
         Sanitized array
     """
-    arr = jnp.nan_to_num(arr, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    arr = jnp.nan_to_num(arr, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
     arr = jnp.where(mask, fill_value, arr)
     return arr
 
@@ -62,12 +62,14 @@ def init_land_mask(
 def handle_land_boundary(
         field1: Float[Array, "lat lon"],
         field2: Float[Array, "lat lon"],
+        mask1: Float[Array, "lat lon"],
+        mask2: Float[Array, "lat lon"],
         pad_left: bool
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
-    Replaces the non-finite values of ``field1`` (``field2``) with values of ``field2`` (``field1``), element-wise.
+    Replaces the masked values of ``field1`` (``field2``) with values of ``field2`` (``field1``), element-wise.
 
-    It allows to introduce less non-finite values when applying grid operators.
+    It allows computing more coherent values when applying grid operators.
     In such cases, ``field1`` and ``field2`` are left and right shifted versions of a field (along one of the axes).
 
     Parameters
@@ -76,6 +78,10 @@ def handle_land_boundary(
         A field
     field2 : Float[Array, "lat lon"]
         Another field
+    mask1 : Float[Array, "lat lon"]
+        A mask defining the marine area of ``field1`` spatial domain; `1` or `True` stands for masked (i.e. land)
+    mask2 : Float[Array, "lat lon"]
+        A mask defining the marine area of ``field2`` spatial domain; `1` or `True` stands for masked (i.e. land)
     pad_left : bool
         If `True`, apply padding in the `left` direction (i.e. `West` or `South`) ;
         if `False`, apply padding in the `right` direction (i.e. `East` or `North`).
@@ -83,15 +89,14 @@ def handle_land_boundary(
     Returns
     -------
     field1 : Float[Array, "lat lon"]
-        A field whose non-finite values have been replaced with the ones from ``field2``
+        A field whose masked values have been replaced with the ones from ``field2``
     field2 : Float[Array, "lat lon"]
-        A field whose non-finite values have been replaced with the ones from ``field1``
+        A field whose masked values have been replaced with the ones from ``field1``
     """
     field1, field2 = lax.cond(
         pad_left,
-        lambda operands: (jnp.where(jnp.isfinite(operands[0]), operands[0], operands[1]), operands[1]),
-        lambda operands: (operands[0], jnp.where(jnp.isfinite(operands[1]), operands[1], operands[0])),
-        (field1, field2)
+        lambda: (jnp.where(mask1, field2, field1), field2),
+        lambda: (field1, jnp.where(mask2, field1, field2))
     )
     return field1, field2
 

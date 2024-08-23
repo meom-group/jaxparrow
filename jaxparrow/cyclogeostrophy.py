@@ -15,8 +15,6 @@ from .geostrophy import geostrophy
 N_IT_IT = 20
 #: Default residual tolerance for Penven and Ioannou approaches
 RES_EPS_IT = 0.01
-#: Default residual value used during the first iteration for Penven and Ioannou approaches
-RES_INIT_IT = "same"
 #: Default size of the grid points used to compute the residual for Ioannou's approach
 RES_FILTER_SIZE_IT = 3
 
@@ -149,12 +147,8 @@ def cyclogeostrophy(
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
     # Handle spurious and masked data
-    dx_u = sanitize.sanitize_data(dx_u, jnp.nan, is_land)
-    dy_u = sanitize.sanitize_data(dy_u, jnp.nan, is_land)
-    dx_v = sanitize.sanitize_data(dx_v, jnp.nan, is_land)
-    dy_v = sanitize.sanitize_data(dy_v, jnp.nan, is_land)
-    coriolis_factor_u = sanitize.sanitize_data(coriolis_factor_u, jnp.nan, is_land)
-    coriolis_factor_v = sanitize.sanitize_data(coriolis_factor_v, jnp.nan, is_land)
+    u_geos_u = sanitize.sanitize_data(u_geos_u, 0, is_land)
+    v_geos_v = sanitize.sanitize_data(v_geos_v, 0, is_land)
 
     if method == "variational":
         if n_it is None:
@@ -167,7 +161,7 @@ def cyclogeostrophy(
             raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
                             "an optimizer.")
         res = _variational(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
-                           n_it, optim, return_losses)
+                           n_it, optim)
     elif method == "iterative":
         if n_it is None:
             n_it = N_IT_IT
@@ -183,6 +177,8 @@ def cyclogeostrophy(
 
     res = (u_cyclo_u, v_cyclo_v)
     if return_geos:
+        u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
+        v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
         res = res + (u_geos_u, v_geos_v)
     if return_grids:
         res = res + (lat_u, lon_u, lat_v, lon_v)
@@ -228,22 +224,20 @@ def _it_step(
         res_weights: Float[Array, "lat lon"],
         use_res_filter: bool,
         return_losses: bool,
-        u_cyclo: Float[Array, "lat lon"],
-        v_cyclo: Float[Array, "lat lon"],
+        u_cyclo_u: Float[Array, "lat lon"],
+        u_cyclo_v: Float[Array, "lat lon"],
         mask_it: Float[Array, "lat lon"],
-        res_n: Float[Array, "lat lon"],
-        losses: Float[Array, "n_it"],
-        i: int
-) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"],
-      Float[Array, "n_it"], int]:
+        res_n: Float[Array, "lat lon"]
+) -> [[Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], int], float]:
     # next it
-    u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, dx_u, dx_v, dy_u, dy_v, mask)
+    u_adv_v, v_adv_u = kinematics.advection(u_cyclo_u, u_cyclo_v, dx_u, dx_v, dy_u, dy_v, mask)
     u_np1 = u_geos_u - v_adv_u / coriolis_factor_u
     v_np1 = v_geos_v + u_adv_v / coriolis_factor_v
+    u_np1 = jnp.nan_to_num(u_np1, copy=False, nan=0, posinf=0, neginf=0)
+    v_np1 = jnp.nan_to_num(v_np1, copy=False, nan=0, posinf=0, neginf=0)
 
     # compute dist to u_cyclo and v_cyclo
-    res_np1 = jnp.abs(u_np1 - u_cyclo) + jnp.abs(v_np1 - v_cyclo)
-    res_np1 = sanitize.sanitize_data(res_np1, 0., mask)
+    res_np1 = jnp.abs(u_np1 - u_cyclo_u) + jnp.abs(v_np1 - u_cyclo_v)
     res_np1 = lax.cond(
         use_res_filter,  # apply filter
         lambda operands: jsp.signal.convolve(operands[0], operands[1], mode="same", method="fft") / operands[2],
@@ -255,24 +249,23 @@ def _it_step(
     mask_n = jnp.where(res_np1 <= res_n, 0, 1)  # nan comp. equiv. to jnp.where(res_np1 > res_n, 1, 0)
 
     # compute loss
-    losses = lax.cond(
+    loss = lax.cond(
         return_losses,
-        lambda operands: operands[0].at[operands[1]].set(_cyclogeostrophic_loss_it(*operands[2:])),
-        lambda operands: operands[0],
-        (losses, i, u_geos_u, v_geos_v, u_cyclo, v_cyclo, u_adv_v, v_adv_u, coriolis_factor_u, coriolis_factor_v)
+        lambda: _cyclogeostrophic_loss_it(
+            u_geos_u, v_geos_v, u_cyclo_u, u_cyclo_v, u_adv_v, v_adv_u, coriolis_factor_u, coriolis_factor_v
+        ),
+        lambda: jnp.nan
     )
 
     # update cyclogeostrophic velocities
-    u_cyclo = mask_it * u_cyclo + (1 - mask_it) * (mask_n * u_cyclo + (1 - mask_n) * u_np1)
-    v_cyclo = mask_it * v_cyclo + (1 - mask_it) * (mask_n * v_cyclo + (1 - mask_n) * v_np1)
+    u_cyclo_u = mask_it * u_cyclo_u + (1 - mask_it) * (mask_n * u_cyclo_u + (1 - mask_n) * u_np1)
+    u_cyclo_v = mask_it * u_cyclo_v + (1 - mask_it) * (mask_n * u_cyclo_v + (1 - mask_n) * v_np1)
 
     # update mask and residuals
     mask_it = jnp.maximum(mask_it, jnp.maximum(mask_jnp1, mask_n))
     res_n = res_np1
 
-    i += 1
-
-    return u_cyclo, v_cyclo, mask_it, res_n, losses, i
+    return (u_cyclo_u, u_cyclo_v, mask_it, res_n), loss
 
 
 @partial(jit, static_argnames=("n_it", "res_filter_size"))
@@ -297,22 +290,21 @@ def _iterative(
     res_weights = jsp.signal.convolve(jnp.ones_like(u_geos_u), res_filter, mode="same", method="fft")
 
     # define step partial: freeze constant over iterations
-    def step_fn(pytree):
+    def step_fn(carry, _):
         return _it_step(
             u_geos_u, v_geos_v,
             dx_u, dx_v, dy_u, dy_v,
             coriolis_factor_u, coriolis_factor_v, mask,
             res_eps, res_filter, res_weights,
             use_res_filter, return_losses,
-            *pytree
+            *carry
         )
 
     # apply updates
-    u_cyclo, v_cyclo, _, _, losses, _ = lax.while_loop(  # noqa
-        lambda args: (args[-1] < n_it) | jnp.any(args[2] != 1),
+    (u_cyclo, v_cyclo, _, _), losses = lax.scan(
         step_fn,
-        (u_geos_u, v_geos_v, mask.astype(int), jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v)),
-         jnp.ones(n_it) * jnp.nan, 0)
+        (u_geos_u, v_geos_v, mask.astype(int), jnp.maximum(jnp.abs(u_geos_u), jnp.abs(v_geos_v))),
+        xs=None, length=n_it
     )
 
     return u_cyclo, v_cyclo, losses
@@ -341,55 +333,40 @@ def _var_loss_fn(
 
 
 def _var_step(
-        mask: Float[Array, "lat lon"],
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         optim: optax.GradientTransformation,
-        return_losses: bool,
         u_cyclo_u: Float[Array, "lat lon"],
         v_cyclo_v: Float[Array, "lat lon"],
-        opt_state: optax.OptState,
-        losses: Float[Array, "n_it"],
-        i: int
-) -> [Float[Array, "lat lon"], ...]:
+        opt_state: optax.OptState
+) -> [[Float[Array, "lat lon"], ...], float]:
     params = (u_cyclo_u, v_cyclo_v)
     # evaluate the cost function and compute its gradient
-    loss, grads = value_and_grad(loss_fn)(params)
-    # make sure to remove nan values
-    grads = (sanitize.sanitize_data(grads[0], 0., mask), sanitize.sanitize_data(grads[1], 0., mask))
+    loss, (u_grad, v_grad) = value_and_grad(loss_fn)(params)
+    u_grad = jnp.nan_to_num(u_grad, copy=False, nan=0, posinf=0, neginf=0)
+    v_grad = jnp.nan_to_num(v_grad, copy=False, nan=0, posinf=0, neginf=0)
     # update the optimizer
-    updates, opt_state = optim.update(grads, opt_state, params)
+    updates, opt_state = optim.update((u_grad, v_grad), opt_state, params)
     # apply updates to the parameters
     u_n, v_n = optax.apply_updates(params, updates)
 
-    # store loss
-    losses = lax.cond(
-        return_losses,
-        lambda operands: operands[0].at[operands[1]].set(operands[2]), lambda operands: operands[0],
-        (losses, i, loss)
-    )
-
-    i += 1
-
-    return u_n, v_n, opt_state, losses, i
+    return (u_n, v_n, opt_state), loss
 
 
 def _solve(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         n_it: int,
-        optim: optax.GradientTransformation,
-        return_losses: bool
+        optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define step partial: freeze constant over iterations
-    def step_fn(pytree):
-        return _var_step(mask, loss_fn, optim,  return_losses, *pytree)
+    def step_fn(carry, _):
+        return _var_step(loss_fn, optim, *carry)
 
-    u_cyclo_u, v_cyclo_v, opt_state, losses, i = lax.while_loop(  # noqa
-        lambda args: args[-1] < n_it,
+    (u_cyclo_u, v_cyclo_v, _), losses = lax.scan(
         step_fn,
-        (u_geos_u, v_geos_v, optim.init((u_geos_u, v_geos_v)), jnp.ones(n_it) * jnp.nan, 0)
+        (u_geos_u, v_geos_v, optim.init((u_geos_u, v_geos_v))),
+        xs=None, length=n_it
     )
 
     return u_cyclo_u, v_cyclo_v, losses
@@ -407,8 +384,7 @@ def _variational(
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"],
         n_it: int,
-        optim: optax.GradientTransformation,
-        return_losses: bool
+        optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
@@ -416,7 +392,7 @@ def _variational(
         u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
     )
 
-    return _solve(u_geos_u, v_geos_v, mask, loss_fn, n_it, optim, return_losses)
+    return _solve(u_geos_u, v_geos_v, loss_fn, n_it, optim)
 
 
 def _cyclogeostrophic_loss_var(

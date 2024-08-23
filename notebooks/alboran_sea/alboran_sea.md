@@ -32,7 +32,7 @@ def get_figsize(width_ratio, wh_ratio=1):
     return fig_width, fig_height
 ```
 
-# Alboran sea
+# Method validation using the eNATL60 run
 
 ## Input data
 
@@ -102,14 +102,14 @@ lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
 norm_vorticity_t = kinematics.normalized_relative_vorticity(
     uvel, vvel, lat_u, lon_u, lat_v, lon_v, mask, interpolate=True
 )
-magnitude = ma.masked_array(kinematics.magnitude(uvel, vvel, interpolate=True), mask)
+magnitude = ma.masked_array(kinematics.magnitude(uvel, vvel, mask, interpolate=True), mask)
 
 mmin = np.nanmin(magnitude)
 mmax = np.nanmax(magnitude)
 
 # interpolate to the center of the cells
-uvel_t = operators.interpolation(uvel, axis=1, padding="left")
-vvel_t = operators.interpolation(vvel, axis=0, padding="left")
+uvel_t = operators.interpolation(uvel, mask, axis=1, padding="left")
+vvel_t = operators.interpolation(vvel, mask, axis=0, padding="left")
 ```
 
 
