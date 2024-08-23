@@ -27,7 +27,7 @@ def sanitize_data(
     arr : Float[Array, "lat lon"]
         Sanitized array
     """
-    arr = jnp.nan_to_num(arr, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    arr = jnp.nan_to_num(arr, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
     arr = jnp.where(mask, fill_value, arr)
     return arr
 

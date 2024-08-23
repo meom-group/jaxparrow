@@ -10,8 +10,8 @@ def advection(
         u: Float[Array, "lat lon"],
         v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
         dx_v: Float[Array, "lat lon"],
+        dy_u: Float[Array, "lat lon"],
         dy_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
@@ -88,6 +88,27 @@ def _v_advection_u(
     v_adv_u = u_u * dvdx_u + v_u * dvdy_u  # U(i)
 
     return v_adv_u
+
+
+def cyclogeostrophic_imbalance(
+        u_geos_u: Float[Array, "lat lon"],
+        v_geos_v: Float[Array, "lat lon"],
+        u_cyclo_u: Float[Array, "lat lon"],
+        v_cyclo_v: Float[Array, "lat lon"],
+        dx_u: Float[Array, "lat lon"],
+        dx_v: Float[Array, "lat lon"],
+        dy_u: Float[Array, "lat lon"],
+        dy_v: Float[Array, "lat lon"],
+        coriolis_factor_u: Float[Array, "lat lon"],
+        coriolis_factor_v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
+) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    u_adv_v, v_adv_u = advection(u_cyclo_u, v_cyclo_v, dx_u, dx_v, dy_u, dy_v, mask)
+
+    u_imbalance = u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u
+    v_imbalance = v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v
+
+    return u_imbalance, v_imbalance
 
 
 def magnitude(
