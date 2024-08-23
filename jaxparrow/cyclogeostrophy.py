@@ -30,6 +30,12 @@ LR_VAR = 0.005
 # Cyclogeostrophy
 # =============================================================================
 
+def _cyclogeostrophic_loss(
+        u_imbalance: Float[Array, "lat lon"], v_imbalance: Float[Array, "lat lon"]
+) -> Float[Scalar, ""]:
+    return jnp.nansum(u_imbalance ** 2) + jnp.nansum(v_imbalance ** 2)
+
+
 def cyclogeostrophy(
         ssh_t: Float[Array, "lat lon"],
         lat_t: Float[Array, "lat lon"],
@@ -190,6 +196,23 @@ def cyclogeostrophy(
 # Iterative method
 # =============================================================================
 
+
+def _cyclogeostrophic_loss_it(
+        u_geos_u: Float[Array, "lat lon"],
+        v_geos_v: Float[Array, "lat lon"],
+        u_cyclo_u: Float[Array, "lat lon"],
+        v_cyclo_v: Float[Array, "lat lon"],
+        u_adv_v: Float[Array, "lat lon"],
+        v_adv_u: Float[Array, "lat lon"],
+        coriolis_factor_u: Float[Array, "lat lon"],
+        coriolis_factor_v: Float[Array, "lat lon"]
+) -> Float[Scalar, ""]:
+    u_imbalance = u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u
+    v_imbalance = v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v
+
+    return _cyclogeostrophic_loss(u_imbalance, v_imbalance)
+
+
 def _it_step(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
@@ -214,7 +237,7 @@ def _it_step(
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"],
       Float[Array, "n_it"], int]:
     # next it
-    u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, dx_u, dy_u, dx_v, dy_v, mask)
+    u_adv_v, v_adv_u = kinematics.advection(u_cyclo, v_cyclo, dx_u, dx_v, dy_u, dy_v, mask)
     u_np1 = u_geos_u - v_adv_u / coriolis_factor_u
     v_np1 = v_geos_v + u_adv_v / coriolis_factor_v
 
@@ -234,7 +257,7 @@ def _it_step(
     # compute loss
     losses = lax.cond(
         return_losses,
-        lambda operands: operands[0].at[operands[1]].set(_cyclogeostrophic_diff(*operands[2:])),
+        lambda operands: operands[0].at[operands[1]].set(_cyclogeostrophic_loss_it(*operands[2:])),
         lambda operands: operands[0],
         (losses, i, u_geos_u, v_geos_v, u_cyclo, v_cyclo, u_adv_v, v_adv_u, coriolis_factor_u, coriolis_factor_v)
     )
@@ -312,9 +335,9 @@ def _var_loss_fn(
         uv_cyclo: [Float[Array, "lat lon"], Float[Array, "lat lon"]]
 ) -> Float[Scalar, ""]:
     u_cyclo_u, v_cyclo_v = uv_cyclo
-    u_adv_v, v_adv_u = kinematics.advection(u_cyclo_u, v_cyclo_v, dx_u, dy_u, dx_v, dy_v, mask)
-    return _cyclogeostrophic_diff(u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v, u_adv_v, v_adv_u,
-                                  coriolis_factor_u, coriolis_factor_v)
+    return _cyclogeostrophic_loss_var(
+        u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v, dx_u, dx_v, dy_u, dy_v,  coriolis_factor_u, coriolis_factor_v, mask
+    )
 
 
 def _var_step(
@@ -396,16 +419,23 @@ def _variational(
     return _solve(u_geos_u, v_geos_v, mask, loss_fn, n_it, optim, return_losses)
 
 
-def _cyclogeostrophic_diff(
+def _cyclogeostrophic_loss_var(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
         u_cyclo_u: Float[Array, "lat lon"],
         v_cyclo_v: Float[Array, "lat lon"],
-        u_adv_v: Float[Array, "lat lon"],
-        v_adv_u: Float[Array, "lat lon"],
+        dx_u: Float[Array, "lat lon"],
+        dx_v: Float[Array, "lat lon"],
+        dy_u: Float[Array, "lat lon"],
+        dy_v: Float[Array, "lat lon"],
         coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"]
+        coriolis_factor_v: Float[Array, "lat lon"],
+        mask: Float[Array, "lat lon"]
 ) -> Float[Scalar, ""]:
-    J_u = jnp.nansum((u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u) ** 2)
-    J_v = jnp.nansum((v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v) ** 2)
-    return J_u + J_v
+    u_imbalance, v_imbalance = kinematics.cyclogeostrophic_imbalance(
+        u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v,
+        dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
+        mask
+    )
+
+    return _cyclogeostrophic_loss(u_imbalance, v_imbalance)
