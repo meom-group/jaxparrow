@@ -10,6 +10,8 @@
 It leverages the power of [JAX](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem. 
 Given the Sea Surface Height (SSH) field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
 
+See the full [documentation](https://jaxparrow.readthedocs.io/en/latest/)!
+
 ## Installation
 
 The package is Pip-installable:
@@ -72,3 +74,8 @@ The YAML configuration file `conf.yml` instruct where input netCDF files are loc
 It also provides the path of the output netCDF file. Optionally, it can specify which cyclogeostrophic approach should be applied and its hyperparameters.
 
 An example configuration file detailing all the required and optional entries can be found [here](https://github.com/meom-group/jaxparrow/blob/main/docs/example-conf.yml).
+
+## Contributing
+
+Contributions of all sorts are welcomed!
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONDUCT.md](CONDUCT.md) to get started.
