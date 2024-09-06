@@ -103,12 +103,47 @@ def cyclogeostrophic_imbalance(
         coriolis_factor_v: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    """
+    Computes the cyclogeostrophic imbalance of a 2d velocity field, on a C-grid (following NEMO convention [1]_).
+
+    Parameters
+    ----------
+    u_geos_u : Float[Array, "lat lon"]
+        U component of the geostrophic velocity field (on the U grid)
+    v_geos_v : Float[Array, "lat lon"]
+        V component of the geostrophic velocity field (on the V grid)
+    u_cyclo_u : Float[Array, "lat lon"]
+        U component of the cyclogeostrophic velocity field (on the U grid)
+    v_cyclo_v : Float[Array, "lat lon"]
+        V component of the cyclogeostrophic velocity field (on the V grid)
+    dx_u : Float[Array, "lat lon"]
+        Spatial steps in meters along `x` (on the U grid)
+    dx_v : Float[Array, "lat lon"]
+        Spatial steps in meters along `x` (on the V grid)
+    dy_u : Float[Array, "lat lon"]
+        Spatial steps in meters along `y` (on the U grid)
+    dy_v : Float[Array, "lat lon"]
+        Spatial steps in meters along `y` (on the V grid)
+    coriolis_factor_u : Float[Array, "lat lon"]
+         Coriolis factor (on the U grid)
+    coriolis_factor_v : Float[Array, "lat lon"]
+         Coriolis factor (on the V grid)
+    mask : Float[Array, "lat lon"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+
+    Returns
+    -------
+    u_imbalance_u : Float[Array, "lat lon"]
+        U component of the cyclogeostrophic imbalance, on the U grid
+    v_imbalance_v : Float[Array, "lat lon"]
+        V component of the cyclogeostrophic imbalance, on the V grid
+    """
     u_adv_v, v_adv_u = advection(u_cyclo_u, v_cyclo_v, dx_u, dx_v, dy_u, dy_v, mask)
 
-    u_imbalance = u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u
-    v_imbalance = v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v
+    u_imbalance_u = u_cyclo_u + v_adv_u / coriolis_factor_u - u_geos_u
+    v_imbalance_v = v_cyclo_v - u_adv_v / coriolis_factor_v - v_geos_v
 
-    return u_imbalance, v_imbalance
+    return u_imbalance_u, v_imbalance_v
 
 
 def magnitude(
@@ -210,11 +245,6 @@ def normalized_relative_vorticity(
     _, dy_u = compute_spatial_step(lat_u, lon_u)
     dx_v, _ = compute_spatial_step(lat_v, lon_v)
     f_u = compute_coriolis_factor(lat_u)
-
-    # Handle spurious data and apply mask
-    # dy_u = sanitize_data(dy_u, jnp.nan, mask)
-    # dx_v = sanitize_data(dx_v, jnp.nan, mask)
-    # f_u = sanitize_data(f_u, jnp.nan, mask)
 
     # Compute the normalized relative vorticity
     du_dy_f = derivative(u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
