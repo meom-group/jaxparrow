@@ -51,8 +51,8 @@ def interpolation(
 
         arr = lax.cond(
             pad_left,
-            lambda: field.at[1:, :].set(midpoint_values),
-            lambda: field.at[:-1, :].set(midpoint_values)
+            lambda: jnp.pad(midpoint_values, pad_width=((1, 0), (0, 0)), mode="edge"),
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 1), (0, 0)), mode="edge")
         )
 
         return arr
@@ -64,8 +64,8 @@ def interpolation(
 
         arr = lax.cond(
             pad_left,
-            lambda: field.at[:, 1:].set(midpoint_values),
-            lambda: field.at[:, :-1].set(midpoint_values)
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (1, 0)), mode="edge"),
+            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (0, 1)), mode="edge")
         )
 
         return arr
