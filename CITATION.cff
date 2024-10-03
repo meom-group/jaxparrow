@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Bertrand"
+    given-names: "Vadim"
+  - family-names: "E V Z De Almeida"
+    given-names: "Victor"
+  - family-names: "Le Sommer"
+    given-names: "Julien"
+  - family-names: "Cosme"
+    given-names: "Emmanuel"
+title: "jaxparrow"
+version: 0.2.2
+doi: 10.5281/zenodo.8010997
+date-released: 2024-08-23
+url: "https://github.com/meom-group/jaxparrow"
