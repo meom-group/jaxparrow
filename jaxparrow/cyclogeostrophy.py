@@ -119,6 +119,10 @@ def cyclogeostrophy(
         U component of the cyclogeostrophic SSC velocity field (on the U grid)
     v_cyclo_v : Float[Array, "lat lon"]
         V component of the cyclogeostrophic SSC velocity field (on the V grid)
+    u_geos_u : Float[Array, "lat lon"]
+        U component of the geostrophic SSC velocity field (on the U grid), if ``return_geos=True``
+    v_geos_v : Float[Array, "lat lon"]
+        V component of the geostrophic SSC velocity field (on the V grid), if ``return_geos=True``
     lat_u : Float[Array, "lat lon"]
         Latitudes of the U grid, if ``return_grids=True``
     lon_u : Float[Array, "lat lon"]
@@ -127,10 +131,6 @@ def cyclogeostrophy(
         Latitudes of the V grid, if ``return_grids=True``
     lon_v : Float[Array, "lat lon"]
         Longitudes of the V grid, if ``return_grids=True``
-    u_geos_u : Float[Array, "lat lon"]
-        U component of the geostrophic SSC velocity field (on the U grid), if ``return_geos=True``
-    v_geos_v : Float[Array, "lat lon"]
-        V component of the geostrophic SSC velocity field (on the V grid), if ``return_geos=True``
     losses: Float[Array, "n_it"]
         Cyclogeostrophic imbalance evaluated at each iteration, if ``return_losses=True``
     """
