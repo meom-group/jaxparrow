@@ -8,5 +8,5 @@ Examples
    :maxdepth: 2
 
    gaussian_eddy
-   alboran_sea
+   nemo_alboran
    duacs_alboran
