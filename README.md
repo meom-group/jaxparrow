@@ -80,9 +80,9 @@ An example configuration file detailing all the required and optional entries ca
 ## Contributing
 
 Contributions of all sorts are welcomed!
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [CONDUCT.md](CONDUCT.md) to get started.
+See [CONTRIBUTING.md](https://github.com/meom-group/jaxparrow/blob/main/CONTRIBUTING.md) and [CONDUCT.md](https://github.com/meom-group/jaxparrow/blob/main/CONDUCT.md) to get started.
 
 ## How to cite
 
-If you use this software, please cite it as specified in [CITATION.cff](CITATION.cff).
+If you use this software, please cite it as specified in [CITATION.cff](https://github.com/meom-group/jaxparrow/blob/main/CITATION.cff).
 Thank you!
