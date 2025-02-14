@@ -64,7 +64,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_6_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_6_0.png?raw=true)
     
 
 
@@ -82,7 +82,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_7_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_7_0.png?raw=true)
     
 
 
@@ -117,7 +117,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_11_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_11_0.png?raw=true)
     
 
 
@@ -135,7 +135,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_12_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_12_0.png?raw=true)
     
 
 
@@ -171,7 +171,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_15_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_15_0.png?raw=true)
     
 
 
@@ -193,7 +193,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_16_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_16_0.png?raw=true)
     
 
 
@@ -241,7 +241,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_21_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_21_0.png?raw=true)
     
 
 
@@ -259,7 +259,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_22_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_22_0.png?raw=true)
     
 
 
@@ -307,7 +307,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_27_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_27_0.png?raw=true)
     
 
 
@@ -329,7 +329,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_28_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_28_0.png?raw=true)
     
 
 
@@ -385,7 +385,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_33_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_33_0.png?raw=true)
     
 
 
@@ -407,7 +407,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_34_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_34_0.png?raw=true)
     
 
 
@@ -459,7 +459,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_38_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_38_0.png?raw=true)
     
 
 
@@ -481,7 +481,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_39_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/gaussian_eddy/output_39_0.png?raw=true)
     
 
 

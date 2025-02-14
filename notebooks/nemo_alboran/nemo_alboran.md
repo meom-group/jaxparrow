@@ -148,7 +148,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_12_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_12_0.png?raw=true)
     
 
 
@@ -209,7 +209,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_16_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_16_0.png?raw=true)
     
 
 
@@ -289,7 +289,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_23_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_23_0.png?raw=true)
     
 
 
@@ -354,7 +354,7 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_27_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_27_0.png?raw=true)
     
 
 
@@ -394,6 +394,6 @@ plt.show()
 
 
     
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_29_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/nemo_alboran/output_29_0.png?raw=true)
     
 

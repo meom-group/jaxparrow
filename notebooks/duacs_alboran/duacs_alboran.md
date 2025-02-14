@@ -73,7 +73,7 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_9_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_9_0.png?raw=true)
 
 
 ## Geostrophic currents using `jaxparrow`
@@ -151,7 +151,7 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_22_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_22_0.png?raw=true)
 
 
 #### Geostrophic inter-comparison
@@ -179,7 +179,7 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_24_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_24_0.png?raw=true)
 
 
 ## Cyclogeostrophic currents using `jaxparrow`
@@ -257,7 +257,7 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_33_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_33_0.png?raw=true)
 
 
 #### Comparison with geostrophy
@@ -281,7 +281,7 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_35_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_35_0.png?raw=true)
 
 
 #### Variational and iterative methods comparison
@@ -305,4 +305,4 @@ plt.show()
 
 
 
-![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_37_0.png)
+![png](https://github.com/meom-group/jaxparrow/blob/main/notebooks/duacs_alboran/output_37_0.png?raw=true)
