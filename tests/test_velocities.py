@@ -16,7 +16,7 @@ class TestVelocities:
         u_geos_est, v_geos_est = _geostrophy(self.ssh, self.dXY, self.dXY, self.coriolis_factor, self.mask)
         u_geos_est_t = interpolation(u_geos_est, self.mask, axis=1, padding="left")
         v_geos_est_t = interpolation(v_geos_est, self.mask, axis=0, padding="left")
-        geos_rmse = self.compute_rmse(self.u_geos, self.v_geos, u_geos_est_t, v_geos_est_t)  # around 0.0003
+        geos_rmse = self.compute_rmse(self.u_geos, self.v_geos, u_geos_est_t, v_geos_est_t)  # around 0.0004
         assert geos_rmse < .0005
 
     def test_cyclogeostrophy_penven(self):
