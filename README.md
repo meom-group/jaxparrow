@@ -4,7 +4,7 @@
 [![PyPi](https://img.shields.io/badge/dynamic/xml?url=https://pypi.org/rss/project/jaxparrow/releases.xml&label=PyPi&query=/rss/channel/item[1]/title)](https://pypi.org/project/jaxparrow/)
 ![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
 [![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)](https://jaxparrow.readthedocs.io/)
-[![DOI](https://zenodo.org/badge/702998298.svg)](https://doi.org/10.5281/zenodo.13886070)
+[![DOI](https://zenodo.org/badge/13886070.svg)](https://doi.org/10.5281/zenodo.13886070)
 
 `jaxparrow` implements a novel approach based on a variational formulation to compute the inversion of the cyclogeostrophic balance.
 
