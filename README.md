@@ -38,7 +38,7 @@ In a Python script, assuming that the input grids have already been initialised 
 ```python
 from jaxparrow import cyclogeostrophy
 
-u_cyclo_2d, v_cyclo_2d = cyclogeostrophy(ssh_2d, lat_2d, lon_2d)
+ucg, vcg = cyclogeostrophy(ssh_2d, lat_2d, lon_2d, return_grids=False)
 ```
 
 *Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).* \
@@ -47,16 +47,16 @@ We provide functions computing some kinematics (such as velocities magnitude, no
 ```python
 from jaxparrow.tools.kinematics import magnitude
 
-uv_cyclo_2d, v_cyclo_2d = magnitude(u_cyclo_2d, v_cyclo_2d, interpolate=True)
+uv_cg = magnitude(ucg, vcg)
 ```
 
-To vectorise the estimation of the cyclogeostrophy across a first time dimension, one aims to use `jax.vmap`.
+To vectorise the estimation of the cyclogeostrophy along a first time dimension, one aims to use `jax.vmap`.
 
 ```python
 import jax
 
 vmap_cyclogeostrophy = jax.vmap(cyclogeostrophy, in_axes=(0, None, None))
-u_cyclo_3d, v_cyclo_3d = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
+u_cg_3d, v_cg_3d = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
 ```
 
 By default, the `cyclogeostrophy` function relies on our variational method.
