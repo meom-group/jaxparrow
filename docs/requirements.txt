@@ -15,4 +15,3 @@ pygments
 pymdown-extensions
 pytkdocs_tweaks
 xarray
-xesmf
