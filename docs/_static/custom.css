@@ -1,0 +1,36 @@
+.md-typeset h5 {
+    text-transform: none !important;
+}
+
+.md-nav__title {
+    display: none !important;
+}
+
+.md-typeset details.note.code-block {
+    border-color: #3333aaab;
+    padding: 0;
+}
+.md-typeset .note.code-block > summary::before,
+.md-typeset .note.code-block > summary::after {
+    background-color: #3333aaab;
+    margin-top: -0.2rem;
+}
+.md-typeset .note.code-block > summary {
+    background-color: #33a1;
+    margin: 0;
+    padding-bottom: .2rem;
+    padding-top: .2rem;
+}
+.md-typeset .note.code-block > .highlight {
+    margin: 0;
+}
+.md-typeset .note.code-block > .highlight > pre {
+    margin: 0;
+}
+
+.output pre {
+    padding-bottom: 0 !important;
+}
+.output pre code {
+    padding-bottom: 0 !important;
+}

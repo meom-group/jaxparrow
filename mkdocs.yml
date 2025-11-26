@@ -1,0 +1,82 @@
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - toc.integrate
+    - header.autohide
+  palette:
+    - scheme: default
+      primary: white
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+site_name: jaxparrow
+site_description: The documentation for the pastax package.
+site_url: https://jaxparrow.readthedocs.io/
+repo_url: https://github.com/meom-group/jaxparrow
+repo_name: meom-group/jaxparrow
+
+docs_dir: docs
+use_directory_urls: true
+
+strict: false
+
+extra_javascript:
+  - _static/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - _static/custom.css
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.snippets:
+      base_path: docs
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+      toc_depth: 4
+
+plugins:
+  - autorefs
+  - include-markdown
+  - mknotebooks
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          setup_commands:
+            - import pytkdocs_tweaks
+            - pytkdocs_tweaks.main()
+            - import jaxtyping
+            - jaxtyping.set_array_name_format("array")
+          options:
+            docstring_style: numpy
+            heading_level: 2
+            members_order: source
+  - search
+
+nav:
+  - Home: "index.md"
+  - Examples:
+      - Methods comparison:
+        - Analytical gradient wind solution: "examples/gradient_wind.ipynb"
+        - Pseudo-SWOT observations from eNATL60 model data: "examples/swot-enatl60.ipynb"
+      - Application to operational SSH products:
+        - DUACS: "examples/duacs.ipynb"
+  - "api.md"
+  - "faq.md"

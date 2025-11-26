@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
-from .tools import geometry, operators, sanitize
+from .utils import geometry, operators, sanitize
 
 
 # =============================================================================
