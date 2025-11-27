@@ -76,7 +76,7 @@ def compute_uv_grids(
         lon_t: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
-    Computes the U and V grids associated to a T grid following NEMO convention [1]_.
+    Computes the U and V grids associated to a T grid following NEMO convention.
 
     Parameters
     ----------

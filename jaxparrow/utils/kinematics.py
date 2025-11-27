@@ -16,7 +16,7 @@ def advection(
         mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
-    Computes the advection terms of a 2d velocity field, on a C-grid, following NEMO convention [1]_.
+    Computes the advection terms of a 2d velocity field, on a C-grid, following NEMO convention.
 
     Parameters
     ----------
@@ -104,7 +104,7 @@ def cyclogeostrophic_imbalance(
         mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
-    Computes the cyclogeostrophic imbalance of a 2d velocity field, on a C-grid (following NEMO convention [1]_).
+    Computes the cyclogeostrophic imbalance of a 2d velocity field, on a C-grid (following NEMO convention).
 
     Parameters
     ----------
@@ -154,7 +154,7 @@ def magnitude(
 ) -> Float[Array, "lat lon"]:
     """
     Computes the magnitude (azimuthal velocity) of a 2d velocity field,
-    possibly on a C-grid (following NEMO convention [1]_) if ``interpolate=True``.
+    possibly on a C-grid (following NEMO convention ) if ``interpolate=True``.
 
     Parameters
     ----------
@@ -168,7 +168,7 @@ def magnitude(
         If not provided, inferred from ``u`` `nan` values
     interpolate : bool, optional
         If `True`, the velocity components are assumed to be located on the U and V grids,
-        and are interpolated to the T one (following NEMO convention [1]_).
+        and are interpolated to the T one (following NEMO convention).
         If `False`, the velocity components are assumed to be located on the T grid, and interpolation is not needed.
 
         Defaults to `True`
@@ -205,9 +205,9 @@ def normalized_relative_vorticity(
         interpolate: bool = True
 ) -> Float[Array, "lat lon"]:
     """
-    Computes the normalised relative vorticity of a velocity field, on a C-grid, following NEMO convention [1]_.
+    Computes the normalised relative vorticity of a velocity field, on a C-grid, following NEMO convention.
 
-    The ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are expected to follow the NEMO convention [1]_.
+    The ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are expected to follow the NEMO convention.
     If not, the function will return inaccurate results.
 
     Parameters
@@ -271,7 +271,7 @@ def kinetic_energy(
 ) -> Float[Array, "lat lon"]:
     """
     Computes the Kinetic Energy (KE) of a velocity field,
-    possibly on a C-grid (following NEMO convention [1]_) if ``interpolate=True``.
+    possibly on a C-grid (following NEMO convention) if ``interpolate=True``.
 
     Parameters
     ----------
@@ -285,7 +285,7 @@ def kinetic_energy(
         If not provided, inferred from ``u`` `nan` values
     interpolate : bool, optional
         If `True`, the velocity components are assumed to be located on the U and V grids,
-        and are interpolated to the T one (following NEMO convention [1]_).
+        and are interpolated to the T one (following NEMO convention).
         If `False`, the velocity components are assumed to be located on the T grid, and interpolation is not needed.
 
         Defaults to `True`
