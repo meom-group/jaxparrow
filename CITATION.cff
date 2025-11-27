@@ -10,7 +10,7 @@ authors:
   - family-names: "Cosme"
     given-names: "Emmanuel"
 title: "jaxparrow"
-version: 0.2.2
-doi: 10.5281/zenodo.13886071
+version: 0.2.3
+doi: 10.5281/zenodo.13886070
 date-released: 2024-08-23
 url: "https://github.com/meom-group/jaxparrow"
