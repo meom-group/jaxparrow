@@ -118,7 +118,7 @@ with dask.config.set(scheduler="synchronous"):
 ```
 
 Note that in this case, you will need to force `Dask` to use the synchronous scheduler as `JAX` is not multi-threaded.
-You can see this approach in action in the [DUACS](example/duacs) example.
+You can see this approach in action in the [DUACS](examples/duacs.ipynb) example.
 
 ## I am getting very large current velocity estimates
 
@@ -136,7 +136,7 @@ optimizer = optax.chain(
 ```
 
 And then pass the `optimizer` object as the `optim` argument of the [`cyclogeostrophy`](api.md#jaxparrow.cyclogeostrophy.cyclogeostrophy) function.
-This is employed in the [Pseudo-SWOT observations from eNATL60 model data](example/swot-enatl60) example.
+This is employed in the [Pseudo-SWOT observations from eNATL60 model data](examples/swot-enatl60.ipynb) example.
 
 We also recommend using `JAX` floating point types with sufficient precision, e.g., `float64`:
 
