@@ -69,7 +69,7 @@ def cyclogeostrophy(
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
-    using a minimization-based (default) or iterative method.
+    using our minimization-based (default) or the fixed-point [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528) method.
 
     The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 

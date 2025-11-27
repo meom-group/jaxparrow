@@ -29,7 +29,7 @@ def interpolation(
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
         Padding direction.
-        For example, following NEMO convention [1]_,
+        For example, following NEMO convention,
         interpolating from U to T points requires a `left` padding
         (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
         and interpolating from T to U points a `right` padding
@@ -105,7 +105,7 @@ def derivative(
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
         Padding direction.
-        For example, following NEMO convention [1]_,
+        For example, following NEMO convention,
         interpolating from U to T points requires a `left` padding
         (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
         and interpolating from T to U points a `right` padding
