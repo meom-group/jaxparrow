@@ -27,7 +27,7 @@ By default, `jaxparrow` will install a CPU-only version of JAX if no other versi
 
 ## Usage
 
-The function you are most probably looking for is `cyclogeostrophy`.
+The function you are most probably looking for is [`cyclogeostrophy`](http://127.0.0.1:8000/api/#jaxparrow.cyclogeostrophy.cyclogeostrophy).
 It computes the cyclogeostrophic velocity field (returned as two `2darray`) from:
 
 - a SSH field (a `2darray`),
