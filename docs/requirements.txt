@@ -2,6 +2,7 @@ cartopy
 copernicusmarine
 cmocean
 dask
+jupyterlab
 matplotlib
 mkdocs<=1.6.1
 mkdocs-material

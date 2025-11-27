@@ -1,13 +1,13 @@
 # FAQ
 
-## How can I use `jaxparrow` to estimate cyclogeostrophic currents from large models outputs?
+## How can I use `jaxparrow` to estimate cyclogeostrophic currents for large observation or model datasets?
 
 `Dask` is probably your best bet to handle large datasets that do not fit into (CPU or GPU) memory.
 
 On a CPU backend, one can use a chunk size of 1 along the time dimension and map the call to [`cyclogeostrophy`](api.md#jaxparrow.cyclogeostrophy.cyclogeostrophy) onto the dataset:
 
 ```python
-import dask.array as da
+import dask
 import jax.numpy as jnp
 import numpy as np
 import xarray as xr
@@ -37,7 +37,7 @@ nt = ds.time.size
 ny = ds.lat.size
 nx = ds.lon.size
 
-empty_arr = da.empty((nt, ny, nx), chunks=(1, ny, nx), dtype=np.float32)
+empty_arr = dask.array.empty((nt, ny, nx), chunks=(1, ny, nx), dtype=np.float32)
 template = xr.Dataset(
     {
         "ucg": (ds.ssh.dims, empty_arr),
@@ -60,7 +60,7 @@ result.to_zarr(OUT_PATH, compute=True, consolidated=False)
 On a GPU backend, the previous approach can be combined with `jax.vmap` to further speed up computations by processing multiple time slices in parallel on the GPU:
 
 ```python
-import dask.array as da
+import dask
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -92,21 +92,21 @@ def do_one_block_vmap(in_block: xr.Dataset):
     return out_block
 
 
+nt = ds.time.size
+ny = ds.lat.size
+nx = ds.lon.size
+
+empty_arr = dask.array.empty((nt, ny, nx), chunks=(BATCH_SIZE, ny, nx), dtype=np.float32)
+template = xr.Dataset(
+    {
+        "ucg": (ds.ssh.dims, empty_arr),
+        "vcg": (ds.ssh.dims, empty_arr),
+        "ug": (ds.ssh.dims, empty_arr),
+        "vg": (ds.ssh.dims, empty_arr),
+    },
+)
+
 with dask.config.set(scheduler="synchronous"):
-    nt = ds.time.size
-    ny = ds.lat.size
-    nx = ds.lon.size
-
-    empty_arr = da.empty((nt, ny, nx), chunks=(BATCH_SIZE, ny, nx), dtype=np.float32)
-    template = xr.Dataset(
-        {
-            "ucg": (ds.ssh.dims, empty_arr),
-            "vcg": (ds.ssh.dims, empty_arr),
-            "ug": (ds.ssh.dims, empty_arr),
-            "vg": (ds.ssh.dims, empty_arr),
-        },
-    )
-
     result = xr.map_blocks(do_one_block_vmap, ds, template=template)
     result = result.assign_coords({
         "time": ds.time,
@@ -118,6 +118,7 @@ with dask.config.set(scheduler="synchronous"):
 ```
 
 Note that in this case, you will need to force `Dask` to use the synchronous scheduler as `JAX` is not multi-threaded.
+You can see this approach in action in the [DUACS](example/duacs) example.
 
 ## I am getting very large current velocity estimates
 
@@ -135,6 +136,7 @@ optimizer = optax.chain(
 ```
 
 And then pass the `optimizer` object as the `optim` argument of the [`cyclogeostrophy`](api.md#jaxparrow.cyclogeostrophy.cyclogeostrophy) function.
+This is employed in the [Pseudo-SWOT observations from eNATL60 model data](example/swot-enatl60) example.
 
 We also recommend using `JAX` floating point types with sufficient precision, e.g., `float64`:
 
