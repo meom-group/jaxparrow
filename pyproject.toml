@@ -37,9 +37,6 @@ dynamic = ["version"]
 notebook = ["jupyterlab", "matplotlib"]
 dev = ["pytest", "sphinx", "myst_parser", "twine", "build"]
 
-[project.scripts]
-jaxparrow = "jaxparrow:main"
-
 [project.urls]
 "Homepage" = "https://jaxparrow.readthedocs.io/"
 "Bug Tracker" = "https://github.com/meom-group/jaxparrow/issues"

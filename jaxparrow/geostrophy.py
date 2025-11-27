@@ -19,7 +19,7 @@ def geostrophy(
     """
     Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
 
-    The geostrophic SSC velocity field is computed on a C-grid, following NEMO convention [1]_.
+    The geostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
     Parameters
     ----------

@@ -11,17 +11,17 @@ import optax
 from .utils import geometry, kinematics, sanitize
 from .geostrophy import geostrophy
 
-#: Default maximum number of iterations for Penven and Ioannou approaches
-N_IT_IT = 20
-#: Default residual tolerance for Penven and Ioannou approaches
-RES_EPS_IT = 0.01
-#: Default size of the grid points used to compute the residual for Ioannou's approach
-RES_FILTER_SIZE_IT = 3
+#: Default maximum number of iterations for the fixed-point approach
+N_IT_FP = 20
+#: Default residual tolerance for the fixed-point approach
+RES_EPS_FP = 0.01
+#: Default size of the grid points used to compute the residual for the fixed-point approach
+RES_FILTER_SIZE_FP = 3
 
-#: Default maximum number of iterations for our variational approach
-N_IT_VAR = 2000
-#: Default learning rate for the gradient descent for our variational approach
-LR_VAR = 0.005
+#: Default maximum number of iterations for our minimization-based approach
+N_IT_MB = 2000
+#: Default learning rate for the gradient descent for our minimization-based approach
+LR_MB = 0.005
 
 
 # =============================================================================
@@ -56,22 +56,22 @@ def cyclogeostrophy(
         lat_t: Float[Array, "lat lon"],
         lon_t: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"] = None,
-        method: Literal["variational", "iterative"] = "variational",
+        method: Literal["minimization", "fixed-point"] = "minimization",
         n_it: int = None,
         optim: Union[optax.GradientTransformation, str] = "sgd",
         optim_kwargs: dict = None,
-        res_eps: float = RES_EPS_IT,
+        res_eps: float = RES_EPS_FP,
         use_res_filter: bool = False,
-        res_filter_size: int = RES_FILTER_SIZE_IT,
+        res_filter_size: int = RES_FILTER_SIZE_FP,
         return_geos: bool = False,
         return_grids: bool = True,
         return_losses: bool = False
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
-    using a variational (default) or iterative method.
+    using a minimization-based (default) or iterative method.
 
-    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention [1]_.
+    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
     Parameters
     ----------
@@ -85,38 +85,38 @@ def cyclogeostrophy(
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` `nan` values
-    method : Literal["variational", "iterative"], optional
+    method : Literal["minimization", "fixed-point"], optional
         Estimation method to use.
-        If ``method="variational"``, then use our variational formulation.
-        If ``method="iterative"``, then use an iterative approach [2]_, [3]_.
+        If ``method="minimization"``, then use our minimization-based formulation.
+        If ``method="fixed-point"``, then use the fixed-point approach [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528).
 
-        Defaults to `variational`
+        Defaults to `minimization`
     n_it : int, optional
         Maximum number of iterations.
 
-        Defaults to ``N_IT_VAR`` or ``N_IT_IT``, based on ``method``
+        Defaults to ``N_IT_MB`` or ``N_IT_FP``, based on ``method``
     optim : Union[optax.GradientTransformation, str], optional
         Optimizer to use.
-        Can be an ``optax.GradientTransformation`` optimizer, or a ``string`` referring to such an optimizer [4]_.
+        Can be an ``optax.GradientTransformation`` optimizer, or a ``string`` referring to such an optimizer.
 
         Defaults to `sgd`
     optim_kwargs : dict, optional
         Optimizer arguments (such as learning rate, etc...).
 
-        If `None`, only the learning rate is enforced to ``LR_VAR``
+        If `None`, only the learning rate is enforced to ``LR_MB``
     res_eps : float, optional
         Residual tolerance of the iterative approach.
         When residuals are smaller, the iterative approach considers local convergence to cyclogeostrophy.
 
-        Defaults to ``RES_EPS_IT``
+        Defaults to ``RES_EPS_FP``
     use_res_filter : bool, optional
-        Use of a convolution filter for the iterative approach when computing the residuals [3]_ or not [2]_.
+        Use of a convolution filter for the iterative approach when computing the residuals or not.
 
         Defaults to `False`
     res_filter_size : int, optional
         Size of the convolution filter of the iterative approach, when ``use_res_filter=True``.
 
-        Defaults to ``RES_FILTER_SIZE_IT``
+        Defaults to ``RES_FILTER_SIZE_FP``
     return_geos : bool, optional
         If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
 
@@ -167,25 +167,25 @@ def cyclogeostrophy(
     u_geos_u = sanitize.sanitize_data(u_geos_u, 0, is_land)
     v_geos_v = sanitize.sanitize_data(v_geos_v, 0, is_land)
 
-    if method == "variational":
+    if method == "minimization":
         if n_it is None:
-            n_it = N_IT_VAR
+            n_it = N_IT_MB
         if isinstance(optim, str):
             if optim_kwargs is None:
-                optim_kwargs = {"learning_rate": LR_VAR}
+                optim_kwargs = {"learning_rate": LR_MB}
             optim = getattr(optax, optim)(**optim_kwargs)
         elif not isinstance(optim, optax.GradientTransformation):
             raise TypeError("optim should be an optax.GradientTransformation optimizer, or a string referring to such "
                             "an optimizer.")
-        res = _variational(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
-                           n_it, optim)
-    elif method == "iterative":
+        res = _minimization_based(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
+                                  is_land, n_it, optim)
+    elif method == "fixed_point":
         if n_it is None:
-            n_it = N_IT_IT
-        res = _iterative(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
-                         n_it, res_eps, use_res_filter, res_filter_size, return_losses)
+            n_it = N_IT_FP
+        res = _fixed_point(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
+                           n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
-        raise ValueError("method should be one of [\"variational\", \"iterative\"]")
+        raise ValueError("method should be one of [\"minimization\", \"fixed_point\"]")
 
     # Handle masked data
     u_cyclo_u, v_cyclo_v, losses = res
@@ -206,11 +206,11 @@ def cyclogeostrophy(
 
 
 # =============================================================================
-# Iterative method
+# Fixed-point method
 # =============================================================================
 
 
-def _it_step(
+def _fp_step(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
@@ -270,7 +270,7 @@ def _it_step(
 
 
 @partial(jit, static_argnames=("n_it", "res_filter_size"))
-def _iterative(
+def _fixed_point(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
@@ -292,7 +292,7 @@ def _iterative(
 
     # define step partial: freeze constant over iterations
     def step_fn(carry, _):
-        return _it_step(
+        return _fp_step(
             u_geos_u, v_geos_v,
             dx_u, dx_v, dy_u, dy_v,
             coriolis_factor_u, coriolis_factor_v, mask,
@@ -312,10 +312,10 @@ def _iterative(
 
 
 # =============================================================================
-# Variational method
+# Minimization-based method
 # =============================================================================
 
-def _var_loss_fn(
+def _mb_loss_fn(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
@@ -333,7 +333,7 @@ def _var_loss_fn(
     )
 
 
-def _var_step(
+def _mb_step(
         loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
         optim: optax.GradientTransformation,
         u_cyclo_u: Float[Array, "lat lon"],
@@ -362,7 +362,7 @@ def _solve(
 ) -> [Float[Array, "lat lon"], ...]:
     # define step partial: freeze constant over iterations
     def step_fn(carry, _):
-        return _var_step(loss_fn, optim, *carry)
+        return _mb_step(loss_fn, optim, *carry)
 
     (u_cyclo_u, v_cyclo_v, _), losses = lax.scan(
         step_fn,
@@ -374,7 +374,7 @@ def _solve(
 
 
 @partial(jit, static_argnames=("n_it", "optim"))
-def _variational(
+def _minimization_based(
         u_geos_u: Float[Array, "lat lon"],
         v_geos_v: Float[Array, "lat lon"],
         dx_u: Float[Array, "lat lon"],
@@ -389,7 +389,7 @@ def _variational(
 ) -> [Float[Array, "lat lon"], ...]:
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
-        _var_loss_fn,
+        _mb_loss_fn,
         u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
     )
 
