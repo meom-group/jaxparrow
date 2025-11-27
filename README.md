@@ -4,18 +4,19 @@
 [![PyPi](https://img.shields.io/badge/dynamic/xml?url=https://pypi.org/rss/project/jaxparrow/releases.xml&label=PyPi&query=/rss/channel/item[1]/title)](https://pypi.org/project/jaxparrow/)
 ![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
 [![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)](https://jaxparrow.readthedocs.io/)
-[![DOI](https://zenodo.org/badge/13886070.svg)](https://doi.org/10.5281/zenodo.13886070)
+[![DOI](https://zenodo.org/badge/702998298.svg)](https://zenodo.org/badge/latestdoi/702998298)
 
 `jaxparrow` implements a novel approach based on a minimization-based formulation to compute the inversion of the cyclogeostrophic balance.
 
-It leverages the power of [`JAX`](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem.
-Given the Sea Surface Height (SSH) field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
+It leverages the power of [`JAX`](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as a minimization problem.
+Given the Sea Surface Height (SSH) field of an ocean system, `jaxparrow` estimates the velocity field that best satisfies the cyclogeostrophic balance.
 
-See the full [documentation](https://jaxparrow.readthedocs.io/en/latest/)!
+A comprehensive documenation is available: [https://jaxparrow.readthedocs.io/en/latest/](https://jaxparrow.readthedocs.io/en/latest/)!
 
 ## Installation
 
 `jaxparrow` is Pip-installable:
+
 ```shell
 pip install jaxparrow
 ```
@@ -29,7 +30,7 @@ By default, `jaxparrow` will install a CPU-only version of JAX if no other versi
 The function you are most probably looking for is `cyclogeostrophy`.
 It computes the cyclogeostrophic velocity field (returned as two `2darray`) from:
 
-- a SSH field (a `2darray`), 
+- a SSH field (a `2darray`),
 - the latitude and longitude grids at the T points (two `2darray`).
 
 In a Python script, assuming that the input grids have already been initialised / imported, estimating the cyclogeostrophic velocities for a single timestamp would resort to:
@@ -62,8 +63,7 @@ By default, the `cyclogeostrophy` function relies on our minimization-based meth
 Its `method` argument provides the ability to use the fixed-point method instead, as described by [Penven *et al.* (2014)](https://doi.org/10.1016/j.dsr2.2013.10.015).
 Additional arguments also give a finer control over the different approaches hyperparameters.
 
-See `jaxparrow` [API documentation](https://jaxparrow.readthedocs.io/en/latest/api/) for more details.
-Notebooks are also available as step-by-step examples.
+See `jaxparrow` [documentation](https://jaxparrow.readthedocs.io/en/latest/) for more details (including the API description and step-by-step examples).
 
 ## Contributing
 
