@@ -2,7 +2,7 @@ import optax
 
 from jaxparrow.cyclogeostrophy import _iterative, _variational, LR_VAR
 from jaxparrow.geostrophy import _geostrophy
-from jaxparrow.tools.operators import interpolation
+from jaxparrow.utils.operators import interpolation
 
 import gaussian_eddy as ge
 

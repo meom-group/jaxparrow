@@ -8,7 +8,7 @@ import jax.scipy as jsp
 from jaxtyping import Array, Bool, Float, Scalar
 import optax
 
-from .tools import geometry, kinematics, sanitize
+from .utils import geometry, kinematics, sanitize
 from .geostrophy import geostrophy
 
 #: Default maximum number of iterations for Penven and Ioannou approaches

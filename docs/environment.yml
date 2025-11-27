@@ -1,0 +1,10 @@
+name: jaxparrow_docs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - ffmpeg
+  - pip
+  - xesmf
+  - pip:
+      - -r requirements.txt

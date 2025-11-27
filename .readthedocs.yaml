@@ -1,21 +1,17 @@
-# Required
 version: 2
 
-# Set the OS, Python version and other tools you might need
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.9"
+    python: "miniconda3-3.12-24.9"
 
-# Build documentation in the "docs/" directory with Sphinx
-sphinx:
-  configuration: docs/conf.py
-  builder: html
+conda:
+   environment: docs/environment.yml
+
+mkdocs:
+  configuration: mkdocs.yml
 
 python:
    install:
-     - requirements: docs/requirements.txt
      - method: pip
        path: .
-       extra_requirements:
-         - docs

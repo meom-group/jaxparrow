@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from jaxparrow.tools import geometry, kinematics
+from jaxparrow.utils import geometry, kinematics
 
 
 def simulate_gaussian_eddy(
