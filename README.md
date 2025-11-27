@@ -8,7 +8,7 @@
 
 `jaxparrow` implements a novel approach based on a minimization-based formulation to compute the inversion of the cyclogeostrophic balance.
 
-It leverages the power of [`JAX`](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem. 
+It leverages the power of [`JAX`](https://jax.readthedocs.io/en/latest/), to efficiently solve the inversion as an optimization problem.
 Given the Sea Surface Height (SSH) field of an ocean system, **jaxparrow** estimates the velocity field that best satisfies the cyclogeostrophic balance.
 
 See the full [documentation](https://jaxparrow.readthedocs.io/en/latest/)!
@@ -21,13 +21,14 @@ pip install jaxparrow
 ```
 
 **<ins>However</ins>**, users with access to GPUs or TPUs should first install `JAX` separately in order to fully benefit from its high-performance computing capacities. 
-See [JAX instructions](https://jax.readthedocs.io/en/latest/installation.html). \
+See [JAX instructions](https://jax.readthedocs.io/en/latest/installation.html).
 By default, `jaxparrow` will install a CPU-only version of JAX if no other version is already present in the Python environment.
 
 ## Usage
 
 The function you are most probably looking for is `cyclogeostrophy`.
 It computes the cyclogeostrophic velocity field (returned as two `2darray`) from:
+
 - a SSH field (a `2darray`), 
 - the latitude and longitude grids at the T points (two `2darray`).
 
@@ -39,7 +40,7 @@ from jaxparrow import cyclogeostrophy
 ucg, vcg = cyclogeostrophy(ssh_2d, lat_2d, lon_2d, return_grids=False)
 ```
 
-*Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).* \
+*Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).*
 We provide functions computing some kinematics (such as velocities magnitude, normalized relative vorticity, or kinematic energy) accounting for these gridding system:
 
 ```python
@@ -58,11 +59,11 @@ u_cg_3d, v_cg_3d = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
 ```
 
 By default, the `cyclogeostrophy` function relies on our minimization-based method.
-Its `method` argument provides the ability to use the fixed-point method instead, as described by [Penven *et al.* (2014)](https://doi.org/10.1016/j.dsr2.2013.10.015) and [Ioannou *et al.* (2019)](https://doi.org/10.1029/2019JC015031).
-Additional arguments also give a finer control over the different approaches hyperparameters. \
-See `jaxparrow` [API documentation](https://jaxparrow.readthedocs.io/en/latest/api.html) for more details.
+Its `method` argument provides the ability to use the fixed-point method instead, as described by [Penven *et al.* (2014)](https://doi.org/10.1016/j.dsr2.2013.10.015).
+Additional arguments also give a finer control over the different approaches hyperparameters.
 
-[Notebooks](https://jaxparrow.readthedocs.io/en/latest/examples.html) are available as step-by-step examples.
+See `jaxparrow` [API documentation](https://jaxparrow.readthedocs.io/en/latest/api/) for more details.
+Notebooks are also available as step-by-step examples.
 
 ## Contributing
 
