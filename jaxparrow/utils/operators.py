@@ -4,8 +4,6 @@ from jax import lax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
-from .sanitize import handle_land_boundary
-
 
 def interpolation(
         field: Float[Array, "lat lon"],
@@ -40,44 +38,34 @@ def interpolation(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_interpolate(field_b, field_f, mask_b, mask_f, pad_left):
-        field_b, field_f = handle_land_boundary(field_b, field_f, mask_b, mask_f, pad_left)
-        return 0.5 * (field_b + field_f)
+    f = jnp.moveaxis(field, axis, -1)
 
-    def axis0(pad_left):
-        field_b, field_f = field[:-1, :], field[1:, :]
-        mask_b, mask_f = mask[:-1, :], mask[1:, :]
-        midpoint_values = do_interpolate(field_b, field_f, mask_b, mask_f, pad_left)
-
-        arr = lax.cond(
-            pad_left,
-            lambda: jnp.pad(midpoint_values, pad_width=((1, 0), (0, 0)), mode="edge"),
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 1), (0, 0)), mode="edge")
-        )
-
-        return arr
-
-    def axis1(pad_left):
-        field_b, field_f = field[:, :-1], field[:, 1:]
-        mask_b, mask_f = mask[:, :-1], mask[:, 1:]
-        midpoint_values = do_interpolate(field_b, field_f, mask_b, mask_f, pad_left)
-
-        arr = lax.cond(
-            pad_left,
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (1, 0)), mode="edge"),
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (0, 1)), mode="edge")
-        )
-
-        return arr
-
-    field = lax.cond(
-        axis == 0,
-        lambda pad_left: axis0(pad_left),
-        lambda pad_left: axis1(pad_left),
-        padding == "left"
+    mid = (f[:, :-1] + f[:, 1:]) * 0.5
+    
+    # handle mask: extrapolate at land boundaries (up to 1 cell)
+    mid = jnp.where(
+        jnp.isnan(mid),
+        f[:, :-1],
+        mid
+    )
+    mid = jnp.where(
+        jnp.isnan(mid),
+        f[:, 1:],
+        mid
     )
 
-    return field
+    # extrapolate at the domain boundary
+    mid = lax.cond(
+        padding == "left",
+        lambda: jnp.concatenate([f[:, :1], mid], axis=-1),
+        lambda: jnp.concatenate([mid, f[:, -1:]], axis=-1)
+    )
+
+    mid = jnp.moveaxis(mid, -1, axis)
+
+    mid = jnp.where(mask, jnp.nan, mid)
+
+    return mid
 
 
 def derivative(
@@ -116,41 +104,31 @@ def derivative(
     field : Float[Array, "lat lon"]
         Interpolated field
     """
-    def do_differentiate(field_b, field_f, mask_b, mask_f, pad_left):
-        field_b, field_f = handle_land_boundary(field_b, field_f, mask_b, mask_f, pad_left)
-        return field_f - field_b
+    f = jnp.moveaxis(field, axis, -1)
 
-    def axis0(pad_left):
-        field_b, field_f = field[:-1, :], field[1:, :]
-        mask_b, mask_f = mask[:-1, :], mask[1:, :]
-        midpoint_values = do_differentiate(field_b, field_f, mask_b, mask_f, pad_left)
-
-        arr = lax.cond(
-            pad_left,
-            lambda: jnp.pad(midpoint_values, pad_width=((1, 0), (0, 0)), mode="edge"),
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 1), (0, 0)), mode="edge")
-        )
-
-        return arr
-
-    def axis1(pad_left):
-        field_b, field_f = field[:, :-1], field[:, 1:]
-        mask_b, mask_f = mask[:, :-1], mask[:, 1:]
-        midpoint_values = do_differentiate(field_b, field_f, mask_b, mask_f, pad_left)
-
-        arr = lax.cond(
-            pad_left,
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (1, 0)), mode="edge"),
-            lambda: jnp.pad(midpoint_values, pad_width=((0, 0), (0, 1)), mode="edge")
-        )
-
-        return arr
-
-    field = lax.cond(
-        axis == 0,
-        lambda pad_left: axis0(pad_left),
-        lambda pad_left: axis1(pad_left),
-        padding == "left"
+    mid = jnp.diff(f, axis=-1)
+    
+    # handle mask: extrapolate at land boundaries (up to 1 cell)
+    mid = jnp.where(
+        jnp.isnan(mid),
+        jnp.pad(mid[:, 1:], pad_width=((0, 0), (0, 1)), mode="edge"),
+        mid
+    )
+    mid = jnp.where(
+        jnp.isnan(mid),
+        jnp.pad(mid[:, :-1], pad_width=((0, 0), (1, 0)), mode="edge"),
+        mid
     )
 
-    return field / dxy
+    # extrapolate at the domain boundary
+    mid = lax.cond(
+        padding == "left",
+        lambda: jnp.pad(mid, pad_width=((0, 0), (1, 0)), mode="edge"),
+        lambda: jnp.pad(mid, pad_width=((0, 0), (0, 1)), mode="edge" )
+    )
+
+    mid = jnp.moveaxis(mid, -1, axis)
+
+    mid = jnp.where(mask, jnp.nan, mid)
+
+    return mid / dxy

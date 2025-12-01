@@ -61,7 +61,7 @@ def geostrophy(
     coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
 
     # Handle spurious and masked data
-    ssh_t = sanitize.sanitize_data(ssh_t, 0, is_land)
+    ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, is_land)
 
     u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t, is_land)
 
