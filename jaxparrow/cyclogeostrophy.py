@@ -56,7 +56,7 @@ def cyclogeostrophy(
         lat_t: Float[Array, "lat lon"],
         lon_t: Float[Array, "lat lon"],
         mask: Float[Array, "lat lon"] = None,
-        method: Literal["minimization", "fixed-point"] = "minimization",
+        method: Literal["minimization-based", "fixed-point"] = "minimization-based",
         n_it: int = None,
         optim: Union[optax.GradientTransformation, str] = "sgd",
         optim_kwargs: dict = None,
@@ -85,9 +85,9 @@ def cyclogeostrophy(
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` `nan` values
-    method : Literal["minimization", "fixed-point"], optional
+    method : Literal["minimization-based", "fixed-point"], optional
         Estimation method to use.
-        If ``method="minimization"``, then use our minimization-based formulation.
+        If ``method="minimization-based"``, then use our minimization-based formulation.
         If ``method="fixed-point"``, then use the fixed-point approach [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528).
 
         Defaults to `minimization`
@@ -164,10 +164,10 @@ def cyclogeostrophy(
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
     # Handle spurious and masked data
-    u_geos_u = sanitize.sanitize_data(u_geos_u, 0, is_land)
-    v_geos_v = sanitize.sanitize_data(v_geos_v, 0, is_land)
+    u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
+    v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
 
-    if method == "minimization":
+    if method == "minimization-based":
         if n_it is None:
             n_it = N_IT_MB
         if isinstance(optim, str):
@@ -179,13 +179,13 @@ def cyclogeostrophy(
                             "an optimizer.")
         res = _minimization_based(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
                                   is_land, n_it, optim)
-    elif method == "fixed_point":
+    elif method == "fixed-point":
         if n_it is None:
             n_it = N_IT_FP
         res = _fixed_point(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
                            n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
-        raise ValueError("method should be one of [\"minimization\", \"fixed_point\"]")
+        raise ValueError("method should be one of [\"minimization-based\", \"fixed-point\"]")
 
     # Handle masked data
     u_cyclo_u, v_cyclo_v, losses = res
