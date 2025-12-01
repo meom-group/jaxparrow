@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/meom-group/jaxparrow/master/.github/workflows/python-package.yml&label=Python&query=$.jobs.build.strategy.matrix["python-version"])
 [![PyPi](https://img.shields.io/badge/dynamic/xml?url=https://pypi.org/rss/project/jaxparrow/releases.xml&label=PyPi&query=/rss/channel/item[1]/title)](https://pypi.org/project/jaxparrow/)
 ![Tests](https://github.com/meom-group/jaxparrow/actions/workflows/python-package.yml/badge.svg)
-[![Docs](https://github.com/meom-group/jaxparrow/actions/workflows/python-documentation.yml/badge.svg)](https://jaxparrow.readthedocs.io/)
+[![Docs](https://app.readthedocs.org/projects/jaxparrow/badge/)](https://jaxparrow.readthedocs.io/)
 [![DOI](https://zenodo.org/badge/702998298.svg)](https://zenodo.org/badge/latestdoi/702998298)
 
 `jaxparrow` implements a novel approach based on a minimization-based formulation to compute the inversion of the cyclogeostrophic balance.
@@ -21,7 +21,7 @@ A comprehensive documenation is available: [https://jaxparrow.readthedocs.io/en/
 pip install jaxparrow
 ```
 
-**<ins>However</ins>**, users with access to GPUs or TPUs should first install `JAX` separately in order to fully benefit from its high-performance computing capacities. 
+**<ins>However</ins>**, users with access to GPUs or TPUs should first install `JAX` separately in order to fully benefit from its high-performance computing capacities.
 See [JAX instructions](https://jax.readthedocs.io/en/latest/installation.html).
 By default, `jaxparrow` will install a CPU-only version of JAX if no other version is already present in the Python environment.
 
