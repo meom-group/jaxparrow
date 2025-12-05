@@ -1,10 +1,10 @@
 # API
 
-::: jaxparrow.cyclogeostrophy.cyclogeostrophy
+::: jaxparrow.cyclogeostrophy
     options:
       show_root_heading: true
 
-::: jaxparrow.geostrophy.geostrophy
+::: jaxparrow.geostrophy
     options:
       show_root_heading: true
 

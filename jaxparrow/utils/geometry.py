@@ -15,8 +15,8 @@ P0 = jnp.pi / 180
 
 
 def compute_spatial_step(
-        lat: Float[Array, "lat lon"],
-        lon: Float[Array, "lat lon"]
+    lat: Float[Array, "lat lon"],
+    lon: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
     Computes the spatial steps of a grid (in meters) along `x` and `y`.
@@ -38,22 +38,36 @@ def compute_spatial_step(
     dy : Float[Array, "lat lon"]
         Spatial steps in meters along `y`
     """
-    def sphere_distance(_lats, _late, _lons, _lone):
-        dlat, dlon = P0 * (_late - _lats), P0 * (_lone - _lons)
-        return EARTH_RADIUS * jnp.sqrt(dlat ** 2 + jnp.cos(P0 * _lats) * jnp.cos(P0 * _late) * dlon ** 2)
+    def haversine_distance(lat1, lat2, lon1, lon2):
+        # convert to radians
+        lat1_rad = jnp.radians(lat1)
+        lat2_rad = jnp.radians(lat2)
 
+        # difference in radians; normalize lon diff to [-180, 180] before radians to handle dateline
+        dlon = lon2 - lon1
+        dlon = (dlon + 180.0) % 360.0 - 180.0   # now in [-180,180]
+        dlon_rad = jnp.radians(dlon)
+
+        dlat_rad = jnp.radians(lat2 - lat1)
+
+        a = jnp.sin(dlat_rad / 2.0) ** 2 + jnp.cos(lat1_rad) * jnp.cos(lat2_rad) * (jnp.sin(dlon_rad / 2.0) ** 2)
+        c = 2.0 * jnp.arctan2(jnp.sqrt(a), jnp.sqrt(1.0 - a))
+        d = EARTH_RADIUS * c
+        return d
+    
     dx, dy = jnp.zeros_like(lat), jnp.zeros_like(lat)
     # dx
-    dx = dx.at[:, :-1].set(sphere_distance(lat[:, :-1], lat[:, 1:], lon[:, :-1], lon[:, 1:]))
+    dx = dx.at[:, :-1].set(haversine_distance(lat[:, :-1], lat[:, 1:], lon[:, :-1], lon[:, 1:]))
     dx = dx.at[:, -1].set(dx[:, -2])
     # dy
-    dy = dy.at[:-1, :].set(sphere_distance(lat[:-1, :], lat[1:, :], lon[:-1, :], lon[1:, :]))
+    dy = dy.at[:-1, :].set(haversine_distance(lat[:-1, :], lat[1:, :], lon[:-1, :], lon[1:, :]))
     dy = dy.at[-1, :].set(dy[-2, :])
+
     return dx, dy
 
 
 def compute_coriolis_factor(
-        lat: Float[Array, "lat lon"]
+    lat: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
     """
     Computes the Coriolis factor from a latitude grid.
@@ -72,8 +86,8 @@ def compute_coriolis_factor(
 
 
 def compute_uv_grids(
-        lat_t: Float[Array, "lat lon"],
-        lon_t: Float[Array, "lat lon"]
+    lat_t: Float[Array, "lat lon"],
+    lon_t: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     """
     Computes the U and V grids associated to a T grid following NEMO convention.

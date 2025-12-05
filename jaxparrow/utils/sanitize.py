@@ -1,12 +1,11 @@
-from jax import lax
 import jax.numpy as jnp
 from jaxtyping import Array, Float
 
 
 def sanitize_data(
-        arr: Float[Array, "lat lon"],
-        fill_value: float,
-        mask: Float[Array, "lat lon"]
+    arr: Float[Array, "lat lon"],
+    fill_value: float,
+    mask: Float[Array, "lat lon"]
 ) -> Float[Array, "lat lon"]:
     """
     Sanitizes data by replacing `nan` with ``fill_value`` and applying ``fill_value`` to the masked area.
@@ -31,8 +30,8 @@ def sanitize_data(
 
 
 def init_land_mask(
-        field: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"] = None
+    field: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"] = None
 ) -> Float[Array, "lat lon"]:
     """
     If ``mask is None``, initializes it from the `nan` values of ``field``.
