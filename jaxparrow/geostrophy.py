@@ -10,11 +10,11 @@ from .utils import geometry, operators, sanitize
 # =============================================================================
 
 def geostrophy(
-        ssh_t: Float[Array, "lat lon"],
-        lat_t: Float[Array, "lat lon"],
-        lon_t: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"] = None,
-        return_grids: bool = True
+    ssh_t: Float[Array, "lat lon"],
+    lat_t: Float[Array, "lat lon"],
+    lon_t: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"] = None,
+    return_grids: bool = True
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
@@ -69,11 +69,10 @@ def geostrophy(
     u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
     v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
 
-    # Compute U and V grids
-    lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-
     res = (u_geos_u, v_geos_v)
     if return_grids:
+        # Compute U and V grids
+        lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
         res = res + (lat_u, lon_u, lat_v, lon_v)
 
     return res
@@ -81,11 +80,11 @@ def geostrophy(
 
 @jax.jit
 def _geostrophy(
-        ssh_t: Float[Array, "lat lon"],
-        dx_t: Float[Array, "lat lon"],
-        dy_t: Float[Array, "lat lon"],
-        coriolis_factor_t: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"]
+    ssh_t: Float[Array, "lat lon"],
+    dx_t: Float[Array, "lat lon"],
+    dy_t: Float[Array, "lat lon"],
+    coriolis_factor_t: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"]
 ) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
     # Compute the gradient of the ssh
     ssh_dx_u = operators.derivative(ssh_t, dx_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)

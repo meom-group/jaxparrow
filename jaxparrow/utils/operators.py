@@ -6,10 +6,10 @@ from jaxtyping import Array, Float
 
 
 def interpolation(
-        field: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        axis: Literal[0, 1],
-        padding: Literal["left", "right"]
+    field: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    axis: Literal[0, 1],
+    padding: Literal["left", "right"]
 ) -> Float[Array, "lat lon"]:
     """
     Interpolates the values of a ``field`` along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/`x`),
@@ -69,11 +69,11 @@ def interpolation(
 
 
 def derivative(
-        field: Float[Array, "lat lon"],
-        dxy: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        axis: Literal[0, 1],
-        padding: Literal["left", "right"]
+    field: Float[Array, "lat lon"],
+    dxy: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    axis: Literal[0, 1],
+    padding: Literal["left", "right"]
 ) -> Float[Array, "lat lon"]:
     """
     Differentiates a ``field``, using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x'),

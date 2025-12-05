@@ -8,8 +8,9 @@ import jax.scipy as jsp
 from jaxtyping import Array, Bool, Float, Scalar
 import optax
 
-from .utils import geometry, kinematics, sanitize
+from .utils import geometry, kinematics, operators, sanitize
 from .geostrophy import geostrophy
+
 
 #: Default maximum number of iterations for the fixed-point approach
 N_IT_FP = 20
@@ -29,20 +30,109 @@ LR_MB = 0.005
 # =============================================================================
 
 
-def _cyclogeostrophic_loss(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        u_cyclo_u: Float[Array, "lat lon"],
-        v_cyclo_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"]
+def cyclogeostrophic_loss(
+    u_geos: Float[Array, "lat lon"],
+    v_geos: Float[Array, "lat lon"],
+    u_cyclo: Float[Array, "lat lon"],
+    v_cyclo: Float[Array, "lat lon"],
+    lat_t: Float[Array, "lat lon"] = None,
+    lon_t: Float[Array, "lat lon"] = None,
+    lat_u: Float[Array, "lat lon"] = None,
+    lon_u: Float[Array, "lat lon"] = None,
+    lat_v: Float[Array, "lat lon"] = None,
+    lon_v: Float[Array, "lat lon"] = None,
+    mask: Float[Array, "lat lon"] = None,
+    vel_on_uv: bool = True
 ) -> Float[Scalar, ""]:
-    u_imbalance, v_imbalance = kinematics.cyclogeostrophic_imbalance(
+    """
+    Computes the cyclogeostrophic imbalance loss from a geostrophic SSC velocity field and a cyclogeostrophic SSC velocity field.
+    The velocity fields can be provided either on the U and V grids (``vel_on_uv=True``) or on the T grid (``vel_on_uv=False``).
+
+    Parameters
+    ----------
+    u_geos : Float[Array, "lat lon"]
+        U component of the geostrophic SSC velocity field
+    v_geos : Float[Array, "lat lon"]
+        V component of the geostrophic SSC velocity field
+    u_cyclo : Float[Array, "lat lon"]
+        U component of the cyclogeostrophic SSC velocity field
+    v_cyclo : Float[Array, "lat lon"]
+        V component of the cyclogeostrophic SSC velocity field
+    lat_t : Float[Array, "lat lon"], optional
+        Latitudes of the T grid.
+        If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        Defaults to `None`
+    lon_t : Float[Array, "lat lon"], optional
+        Longitudes of the T grid.
+        If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        Defaults to `None`
+    lat_u : Float[Array, "lat lon"], optional
+        Latitudes of the U grid.
+        Defaults to `None`
+    lon_u : Float[Array, "lat lon"], optional
+        Longitudes of the U grid.
+        Defaults to `None`
+    lat_v : Float[Array, "lat lon"], optional
+        Latitudes of the V grid.
+        Defaults to `None`
+    lon_v : Float[Array, "lat lon"], optional
+        Longitudes of the V grid.
+        Defaults to `None`
+    mask : Float[Array, "lat lon"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land).
+        If not provided, inferred from ``u_geos`` `nan` values.
+        Defaults to `None`
+    vel_on_uv : bool, optional
+        If `True`, ``u_cyclo`` and ``v_cyclo`` are on the U and V grids.
+        If `False`, they are on the T grid.
+        Defaults to `True`
+
+    Returns
+    -------
+    loss : Float[Scalar, ""]
+        Cyclogeostrophic imbalance loss
+    """
+    if mask is None:
+        mask = sanitize.init_land_mask(u_geos)
+    
+    if not vel_on_uv:
+        u_geos = operators.interpolation(u_geos, mask, axis=1, padding="right")
+        v_geos = operators.interpolation(v_geos, mask, axis=0, padding="right")
+        u_cyclo = operators.interpolation(u_cyclo, mask, axis=1, padding="right")
+        v_cyclo = operators.interpolation(v_cyclo, mask, axis=0, padding="right")
+
+    if lat_u is None or lon_u is None or lat_v is None or lon_v is None:
+        if lat_t is None or lon_t is None:
+            raise ValueError("Either lat_t and lon_t, or lat_u, lon_u, lat_v, and lon_v must be provided")
+        lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
+    
+    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
+    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
+    coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
+    coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
+
+    return _cyclogeostrophic_loss(
+        u_geos, v_geos, u_cyclo, v_cyclo,
+        dx_u, dx_v, dy_u, dy_v,
+        coriolis_factor_u, coriolis_factor_v,
+        mask
+    )
+
+
+def _cyclogeostrophic_loss(
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    u_cyclo_u: Float[Array, "lat lon"],
+    v_cyclo_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_u: Float[Array, "lat lon"],
+    coriolis_factor_v: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"]
+) -> Float[Scalar, ""]:
+    u_imbalance, v_imbalance = kinematics._cyclogeostrophic_imbalance(
         u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v,
         dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
         mask
@@ -52,20 +142,20 @@ def _cyclogeostrophic_loss(
 
 
 def cyclogeostrophy(
-        ssh_t: Float[Array, "lat lon"],
-        lat_t: Float[Array, "lat lon"],
-        lon_t: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"] = None,
-        method: Literal["minimization-based", "fixed-point"] = "minimization-based",
-        n_it: int = None,
-        optim: Union[optax.GradientTransformation, str] = "sgd",
-        optim_kwargs: dict = None,
-        res_eps: float = RES_EPS_FP,
-        use_res_filter: bool = False,
-        res_filter_size: int = RES_FILTER_SIZE_FP,
-        return_geos: bool = False,
-        return_grids: bool = True,
-        return_losses: bool = False
+    ssh_t: Float[Array, "lat lon"],
+    lat_t: Float[Array, "lat lon"],
+    lon_t: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"] = None,
+    method: Literal["minimization-based", "gradient-wind", "fixed-point"] = "minimization-based",
+    n_it: int = None,
+    optim: Union[optax.GradientTransformation, str] = "sgd",
+    optim_kwargs: dict = None,
+    res_eps: float = RES_EPS_FP,
+    use_res_filter: bool = False,
+    res_filter_size: int = RES_FILTER_SIZE_FP,
+    return_geos: bool = False,
+    return_grids: bool = True,
+    return_losses: bool = False
 ) -> [Float[Array, "lat lon"], ...]:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
@@ -85,12 +175,13 @@ def cyclogeostrophy(
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` `nan` values
-    method : Literal["minimization-based", "fixed-point"], optional
+    method : Literal["minimization-based", "gradient-wind", "fixed-point"], optional
         Estimation method to use.
         If ``method="minimization-based"``, then use our minimization-based formulation.
+        If ``method="gradient-wind"``, then use the gradient-wind approximation.
         If ``method="fixed-point"``, then use the fixed-point approach [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528).
 
-        Defaults to `minimization`
+        Defaults to `minimization-based`
     n_it : int, optional
         Maximum number of iterations.
 
@@ -151,19 +242,15 @@ def cyclogeostrophy(
     losses: Float[Array, "n_it"]
         Cyclogeostrophic imbalance evaluated at each iteration, if ``return_losses=True``
     """
-    # Make sure the mask is initialized
     is_land = sanitize.init_land_mask(ssh_t, mask)
 
-    # Compute geostrophic SSC velocity field
     u_geos_u, v_geos_v, lat_u, lon_u, lat_v, lon_v = geostrophy(ssh_t, lat_t, lon_t, is_land, return_grids=True)
 
-    # Compute spatial steps and Coriolis factors
     dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
     dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
     coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
 
-    # Handle spurious and masked data
     u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
     v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
 
@@ -179,13 +266,24 @@ def cyclogeostrophy(
                             "an optimizer.")
         res = _minimization_based(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, 
                                   is_land, n_it, optim)
+    elif method == "gradient-wind":
+        coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
+        u_cyclo_u, v_cyclo_v = _gradient_wind(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_t, is_land)
+        if return_losses:
+            loss = _cyclogeostrophic_loss(
+                u_geos_u, v_geos_v, u_cyclo_u, v_cyclo_v, dx_u, dx_v, dy_u, dy_v,
+                coriolis_factor_u, coriolis_factor_v, is_land
+            )
+        else:
+            loss = None
+        res = (u_cyclo_u, v_cyclo_v, loss)
     elif method == "fixed-point":
         if n_it is None:
             n_it = N_IT_FP
         res = _fixed_point(u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, is_land,
                            n_it, res_eps, use_res_filter, res_filter_size, return_losses)
     else:
-        raise ValueError("method should be one of [\"minimization-based\", \"fixed-point\"]")
+        raise ValueError("method should be one of [\"minimization-based\", \"gradient-wind\", \"fixed-point\"]")
 
     # Handle masked data
     u_cyclo_u, v_cyclo_v, losses = res
@@ -211,24 +309,24 @@ def cyclogeostrophy(
 
 
 def _fp_step(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        res_eps: float,
-        res_filter: Float[Array, "lat lon"],
-        res_weights: Float[Array, "lat lon"],
-        use_res_filter: bool,
-        return_losses: bool,
-        u_n: Float[Array, "lat lon"],
-        v_n: Float[Array, "lat lon"],
-        mask_update: Bool[Array, "lat lon"],
-        res_n: Float[Array, "lat lon"]
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_u: Float[Array, "lat lon"],
+    coriolis_factor_v: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    res_eps: float,
+    res_filter: Float[Array, "lat lon"],
+    res_weights: Float[Array, "lat lon"],
+    use_res_filter: bool,
+    return_losses: bool,
+    u_n: Float[Array, "lat lon"],
+    v_n: Float[Array, "lat lon"],
+    mask_update: Bool[Array, "lat lon"],
+    res_n: Float[Array, "lat lon"]
 ) -> [[Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], int], float]:
     # compute loss
     loss = lax.cond(
@@ -240,7 +338,7 @@ def _fp_step(
     )
 
     # next it
-    u_adv_v, v_adv_u = kinematics.advection(u_n, v_n, dx_u, dx_v, dy_u, dy_v, mask)
+    u_adv_v, v_adv_u = kinematics._advection(u_n, v_n, dx_u, dx_v, dy_u, dy_v, mask)
     u_np1 = u_geos_u - jnp.nan_to_num(v_adv_u / coriolis_factor_u, copy=False, nan=0, posinf=0, neginf=0)
     v_np1 = v_geos_v + jnp.nan_to_num(u_adv_v / coriolis_factor_v, copy=False, nan=0, posinf=0, neginf=0)
 
@@ -271,20 +369,20 @@ def _fp_step(
 
 @partial(jit, static_argnames=("n_it", "res_filter_size"))
 def _fixed_point(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        n_it: int,
-        res_eps: float,
-        use_res_filter: bool,
-        res_filter_size: int,
-        return_losses: bool
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_u: Float[Array, "lat lon"],
+    coriolis_factor_v: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    n_it: int,
+    res_eps: float,
+    use_res_filter: bool,
+    res_filter_size: int,
+    return_losses: bool
 ) -> [Float[Array, "lat lon"], ...]:
     # used if applying a filter when computing stopping criteria
     res_filter = jnp.ones((res_filter_size, res_filter_size))
@@ -312,20 +410,85 @@ def _fixed_point(
 
 
 # =============================================================================
+# Gradient wind equation
+# =============================================================================
+
+@jit
+def _gradient_wind(
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_t: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"]
+) -> [Float[Array, "lat lon"], ...]:
+    """
+    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
+    using the gradient wind equation.
+
+    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
+
+    Parameters
+    ----------
+    u_geos_u : Float[Array, "lat lon"]
+        U component of the geostrophic SSC velocity field
+    v_geos_v : Float[Array, "lat lon"]
+        V component of the geostrophic SSC velocity field
+    dx_u : Float[Array, "lat lon"]
+        Spatial steps in meters along `x` on the U grid
+    dx_v : Float[Array, "lat lon"]
+        Spatial steps in meters along `x` on the V grid
+    dy_u : Float[Array, "lat lon"]
+        Spatial steps in meters along `y` on the U grid
+    dy_v : Float[Array, "lat lon"]
+        Spatial steps in meters along `y` on the V grid
+    coriolis_factor_t : Float[Array, "lat lon"]
+        Coriolis factor on the T grid
+    mask : Float[Array, "lat lon"]
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+    
+    Returns
+    -------
+    u_cyclo_u : Float[Array, "lat lon"]
+        U component of the cyclogeostrophic SSC velocity field (on the U grid)
+    v_cyclo_v : Float[Array, "lat lon"]
+        V component of the cyclogeostrophic SSC velocity field (on the V grid)
+    """
+    R = kinematics._radius_of_curvature(
+        u_geos_u, v_geos_v, dx_u, dx_v, dy_u, dy_v, mask, vel_on_uv=True
+    )
+
+    V_g = kinematics.magnitude(u_geos_u, v_geos_v, mask)
+    V_gr = 2 * V_g / (1 + jnp.sqrt(1 + 4 * V_g / (coriolis_factor_t * R)))
+
+    ratio = V_gr / V_g
+
+    ratio_u = operators.interpolation(ratio, mask, axis=1, padding="right")
+    ratio_v = operators.interpolation(ratio, mask, axis=0, padding="right")
+
+    u_cyclo_u = ratio_u * u_geos_u
+    v_cyclo_v = ratio_v * v_geos_v
+
+    return u_cyclo_u, v_cyclo_v
+
+
+# =============================================================================
 # Minimization-based method
 # =============================================================================
 
 def _mb_loss_fn(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        uv_cyclo: [Float[Array, "lat lon"], Float[Array, "lat lon"]]
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_u: Float[Array, "lat lon"],
+    coriolis_factor_v: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    uv_cyclo: [Float[Array, "lat lon"], Float[Array, "lat lon"]]
 ) -> Float[Scalar, ""]:
     u_cyclo_u, v_cyclo_v = uv_cyclo
     return _cyclogeostrophic_loss(
@@ -334,11 +497,11 @@ def _mb_loss_fn(
 
 
 def _mb_step(
-        loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
-        optim: optax.GradientTransformation,
-        u_cyclo_u: Float[Array, "lat lon"],
-        v_cyclo_v: Float[Array, "lat lon"],
-        opt_state: optax.OptState
+    loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
+    optim: optax.GradientTransformation,
+    u_cyclo_u: Float[Array, "lat lon"],
+    v_cyclo_v: Float[Array, "lat lon"],
+    opt_state: optax.OptState
 ) -> [[Float[Array, "lat lon"], ...], float]:
     params = (u_cyclo_u, v_cyclo_v)
     # evaluate the cost function and compute its gradient
@@ -354,11 +517,11 @@ def _mb_step(
 
 
 def _solve(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
-        n_it: int,
-        optim: optax.GradientTransformation
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    loss_fn: Callable[[[Float[Array, "lat lon"], Float[Array, "lat lon"]]], Float[Scalar, ""]],
+    n_it: int,
+    optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define step partial: freeze constant over iterations
     def step_fn(carry, _):
@@ -375,17 +538,17 @@ def _solve(
 
 @partial(jit, static_argnames=("n_it", "optim"))
 def _minimization_based(
-        u_geos_u: Float[Array, "lat lon"],
-        v_geos_v: Float[Array, "lat lon"],
-        dx_u: Float[Array, "lat lon"],
-        dx_v: Float[Array, "lat lon"],
-        dy_u: Float[Array, "lat lon"],
-        dy_v: Float[Array, "lat lon"],
-        coriolis_factor_u: Float[Array, "lat lon"],
-        coriolis_factor_v: Float[Array, "lat lon"],
-        mask: Float[Array, "lat lon"],
-        n_it: int,
-        optim: optax.GradientTransformation
+    u_geos_u: Float[Array, "lat lon"],
+    v_geos_v: Float[Array, "lat lon"],
+    dx_u: Float[Array, "lat lon"],
+    dx_v: Float[Array, "lat lon"],
+    dy_u: Float[Array, "lat lon"],
+    dy_v: Float[Array, "lat lon"],
+    coriolis_factor_u: Float[Array, "lat lon"],
+    coriolis_factor_v: Float[Array, "lat lon"],
+    mask: Float[Array, "lat lon"],
+    n_it: int,
+    optim: optax.GradientTransformation
 ) -> [Float[Array, "lat lon"], ...]:
     # define loss partial: freeze constant over iterations
     loss_fn = partial(
