@@ -8,8 +8,6 @@ from jaxtyping import Float
 import optax
 
 from ._core import CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result, _cyclogeostrophic_loss
-from ..geostrophy import geostrophy
-from ..utils import geometry
 
 
 def minimization_based(
@@ -145,63 +143,6 @@ def _minimization_based(
     carry, losses = lax.scan(
         step_fn,
         (ug_u, vg_v, optim.init((ug_u, vg_v))),
-        xs=None, length=n_it
-    )
-    
-    return *carry[:-1], losses
-
-
-@partial(jax.jit, static_argnames=("n_it", "optim", "ssh_regularization_fn"))
-def _minimization_based_regularized(
-    ssh_t: Float[jax.Array, "lat lon"],
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    lat_t: Float[jax.Array, "lat lon"],
-    lon_t: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    n_it: int,
-    optim: optax.GradientTransformation,
-    ssh_regularization_fn: Callable[[Float[jax.Array, "lat lon"]], Float[jax.Array, ""]]
-) -> tuple[
-    Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "n_it"]
-]:
-    def loss_fn(args):
-        ssh_reg_t, ucg_u, vcg_v = args
-
-        ug_u, vg_v = geostrophy(ssh_reg_t, lat_t, lon_t, mask, return_grids=False)
-
-        phy = _cyclogeostrophic_loss(
-            ug_u, vg_v, ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
-        )
-        reg = ssh_regularization_fn(ssh_reg_t, dx_t, dy_t)
-
-        ssh_attach = jnp.nansum((ssh_reg_t - ssh_t) ** 2) / 2  # attachment term
-
-        return ssh_attach + reg + 0.01 * phy
-    
-    def step_fn(carry, _):
-        params = carry[:-1]
-        opt_state = carry[-1]
-    
-        loss, grads = jax.value_and_grad(loss_fn)(params)
-        grads = tuple(map(lambda x: jnp.nan_to_num(x, copy=False, nan=0, posinf=0, neginf=0), grads))
-
-        updates, opt_state = optim.update(grads, opt_state, params)
-        params = optax.apply_updates(params, updates)
-
-        return params + (opt_state,), loss
-    
-    dx_t, dy_t = geometry.compute_spatial_step(lat_t, lon_t)
-    
-    carry, losses = lax.scan(
-        step_fn,
-        (ssh_t, ug_u, vg_v, optim.init((ssh_t, ug_u, vg_v))),
         xs=None, length=n_it
     )
     

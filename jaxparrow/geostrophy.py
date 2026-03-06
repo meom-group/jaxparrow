@@ -1,8 +1,42 @@
+from typing import NamedTuple
+
 import jax
 import jax.numpy as jnp
 from jaxtyping import Float
 
 from .utils import geometry, operators, sanitize
+
+
+class GeostrophyResult(NamedTuple):
+    """
+    Result of geostrophic velocity computation.
+
+    This NamedTuple provides named access to results, avoiding positional unpacking errors.
+    All fields except ``ug`` and ``vg`` are optional and depend on the
+    ``return_grids`` flag passed to the computation function.
+
+    Attributes
+    ----------
+    ug : Float[jax.Array, "lat lon"]
+        U component of geostrophic velocity on U grid
+    vg : Float[jax.Array, "lat lon"]
+        V component of geostrophic velocity on V grid
+    lat_u : Float[jax.Array, "lat lon"] | None
+        Latitudes of U grid (if ``return_grids=True``)
+    lon_u : Float[jax.Array, "lat lon"] | None
+        Longitudes of U grid (if ``return_grids=True``)
+    lat_v : Float[jax.Array, "lat lon"] | None
+        Latitudes of V grid (if ``return_grids=True``)
+    lon_v : Float[jax.Array, "lat lon"] | None
+        Longitudes of V grid (if ``return_grids=True``)
+    """
+
+    ug: Float[jax.Array, "lat lon"]
+    vg: Float[jax.Array, "lat lon"]
+    lat_u: Float[jax.Array, "lat lon"] | None = None
+    lon_u: Float[jax.Array, "lat lon"] | None = None
+    lat_v: Float[jax.Array, "lat lon"] | None = None
+    lon_v: Float[jax.Array, "lat lon"] | None = None
 
 
 # =============================================================================
@@ -15,7 +49,7 @@ def geostrophy(
     lon_t: Float[jax.Array, "lat lon"],
     mask: Float[jax.Array, "lat lon"] = None,
     return_grids: bool = True
-) -> list[Float[jax.Array, "lat lon"]]:
+) -> GeostrophyResult:
     """
     Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
 
@@ -40,18 +74,15 @@ def geostrophy(
 
     Returns
     -------
-    ug_u : Float[jax.Array, "lat lon"]
-        U component of the geostrophic SSC velocity field (on the U grid)
-    vg_v : Float[jax.Array, "lat lon"]
-        V component of the geostrophic SSC velocity field (on the V grid)
-    lat_u : Float[jax.Array, "lat lon"]
-        Latitudes of the U grid, if ``return_grids=True``
-    lon_u : Float[jax.Array, "lat lon"]
-        Longitudes of the U grid, if ``return_grids=True``
-    lat_v : Float[jax.Array, "lat lon"]
-        Latitudes of the V grid, if ``return_grids=True``
-    lon_v : Float[jax.Array, "lat lon"]
-        Longitudes of the V grid, if ``return_grids=True``
+    GeostrophyResult
+        A named tuple containing:
+
+        - **ug** : U component of the geostrophic SSC velocity field (on the U grid)
+        - **vg** : V component of the geostrophic SSC velocity field (on the V grid)
+        - **lat_u** : Latitudes of the U grid (if ``return_grids=True``, else ``None``)
+        - **lon_u** : Longitudes of the U grid (if ``return_grids=True``, else ``None``)
+        - **lat_v** : Latitudes of the V grid (if ``return_grids=True``, else ``None``)
+        - **lon_v** : Longitudes of the V grid (if ``return_grids=True``, else ``None``)
     """
     # Make sure the mask is initialized
     is_land = sanitize.init_land_mask(ssh_t, mask)
@@ -69,13 +100,19 @@ def geostrophy(
     ug_u = sanitize.sanitize_data(ug_u, jnp.nan, is_land)
     vg_v = sanitize.sanitize_data(vg_v, jnp.nan, is_land)
 
-    res = (ug_u, vg_v)
+    lat_u, lon_u, lat_v, lon_v = None, None, None, None
     if return_grids:
         # Compute U and V grids
         lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-        res = res + (lat_u, lon_u, lat_v, lon_v)
 
-    return res
+    return GeostrophyResult(
+        ug=ug_u,
+        vg=vg_v,
+        lat_u=lat_u,
+        lon_u=lon_u,
+        lat_v=lat_v,
+        lon_v=lon_v
+    )
 
 
 @jax.jit

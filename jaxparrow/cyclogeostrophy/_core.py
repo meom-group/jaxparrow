@@ -141,9 +141,16 @@ def setup_cyclogeostrophy(
     """
     is_land = sanitize.init_land_mask(ssh_t, mask)
 
-    ug_u, vg_v, lat_u, lon_u, lat_v, lon_v = geostrophy(
+    geos_results = geostrophy(
         ssh_t, lat_t, lon_t, is_land, return_grids=True
     )
+
+    ug_u = geos_results.ug
+    vg_v = geos_results.vg
+    lat_u = geos_results.lat_u
+    lon_u = geos_results.lon_u
+    lat_v = geos_results.lat_v
+    lon_v = geos_results.lon_v
 
     dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
     dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
