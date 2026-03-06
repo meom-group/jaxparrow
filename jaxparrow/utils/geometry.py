@@ -1,5 +1,6 @@
+import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Float
 
 from .operators import interpolation
 
@@ -15,9 +16,9 @@ P0 = jnp.pi / 180
 
 
 def compute_spatial_step(
-    lat: Float[Array, "lat lon"],
-    lon: Float[Array, "lat lon"]
-) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    lat: Float[jax.Array, "lat lon"],
+    lon: Float[jax.Array, "lat lon"]
+) -> [Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
     """
     Computes the spatial steps of a grid (in meters) along `x` and `y`.
 
@@ -26,16 +27,16 @@ def compute_spatial_step(
 
     Parameters
     ----------
-    lat : Float[Array, "lat lon"]
+    lat : Float[jax.Array, "lat lon"]
         Latitude grid
-    lon : Float[Array, "lat lon"]
+    lon : Float[jax.Array, "lat lon"]
         Longitude grid
 
     Returns
     -------
-    dx : Float[Array, "lat lon"]
+    dx : Float[jax.Array, "lat lon"]
         Spatial steps in meters along `x`
-    dy : Float[Array, "lat lon"]
+    dy : Float[jax.Array, "lat lon"]
         Spatial steps in meters along `y`
     """
     def haversine_distance(lat1, lat2, lon1, lon2):
@@ -67,47 +68,49 @@ def compute_spatial_step(
 
 
 def compute_coriolis_factor(
-    lat: Float[Array, "lat lon"]
-) -> Float[Array, "lat lon"]:
+    lat: Float[jax.Array, "lat lon"]
+) -> Float[jax.Array, "lat lon"]:
     """
     Computes the Coriolis factor from a latitude grid.
 
     Parameters
     ----------
-    lat : Float[Array, "lat lon"]
+    lat : Float[jax.Array, "lat lon"]
         Latitudes grid
 
     Returns
     -------
-    cf : Float[Array, "lat lon"]
+    cf : Float[jax.Array, "lat lon"]
         Coriolis factor grid
     """
     return 2 * EARTH_ANG_SPEED * jnp.sin(lat * P0)
 
 
 def compute_uv_grids(
-    lat_t: Float[Array, "lat lon"],
-    lon_t: Float[Array, "lat lon"]
-) -> [Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    lat_t: Float[jax.Array, "lat lon"],
+    lon_t: Float[jax.Array, "lat lon"]
+) -> [
+    Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]
+]:
     """
     Computes the U and V grids associated to a T grid following NEMO convention.
 
     Parameters
     ----------
-    lat_t : Float[Array, "lat lon"]
+    lat_t : Float[jax.Array, "lat lon"]
         Latitudes of the T grid
-    lon_t : Float[Array, "lat lon"]
+    lon_t : Float[jax.Array, "lat lon"]
         Longitudes of the T grid
 
     Returns
     -------
-    lat_u : Float[Array, "lat lon"]
+    lat_u : Float[jax.Array, "lat lon"]
         Latitudes of the U grid
-    lon_u : Float[Array, "lat lon"]
+    lon_u : Float[jax.Array, "lat lon"]
         Longitudes of the U grid
-    lat_v : Float[Array, "lat lon"]
+    lat_v : Float[jax.Array, "lat lon"]
         Latitudes of the V grid
-    lon_v : Float[Array, "lat lon"]
+    lon_v : Float[jax.Array, "lat lon"]
         Longitudes of the V grid
     """
     lat_mask = jnp.zeros_like(lat_t, dtype=bool)

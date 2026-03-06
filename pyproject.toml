@@ -21,11 +21,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "netCDF4",
-    "numpy",
-    "pyyaml",
-    "tqdm",
-    "xarray",
     "jax",
     "jaxlib",
     "jaxtyping",

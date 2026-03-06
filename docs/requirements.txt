@@ -2,6 +2,7 @@ cartopy
 copernicusmarine
 cmocean
 dask
+h5py
 jupyterlab
 matplotlib
 mkdocs<=1.6.1
@@ -13,8 +14,10 @@ mkdocstrings<=0.29.0
 mkdocstrings-python<=1.13.0
 mknotebooks @ git+https://github.com/vadmbertr/mknotebooks@master
 nbconvert
+netcdf4
 numpy
 pygments
 pymdown-extensions
 pytkdocs_tweaks
 xarray
+xesmf
