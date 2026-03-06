@@ -1,5 +1,13 @@
-from .cyclogeostrophy import cyclogeostrophy
-from .geostrophy import geostrophy
 from .version import __version__  # noqa
 
-__all__ = ["cyclogeostrophy", "geostrophy"]
+from .geostrophy import geostrophy, GeostrophyResult
+from .cyclogeostrophy import fixed_point, gradient_wind, minimization_based
+
+__all__ = [
+    "__version__",
+    "geostrophy",
+    "GeostrophyResult",
+    "fixed_point",
+    "gradient_wind",
+    "minimization_based",
+]

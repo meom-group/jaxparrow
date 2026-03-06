@@ -9,8 +9,19 @@ def simulate_gaussian_eddy(
     dxy: float,
     eta0: float,
     latitude: int
-) -> [jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array,
-      jax.Array]:
+) -> tuple[
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array, 
+    jax.Array
+]:
     l0 = R0 * 2  # limit boundary impact
     xy = jnp.arange(0, l0, dxy)
     xy = jnp.concatenate((-xy[::-1][:-1], xy))
@@ -20,12 +31,12 @@ def simulate_gaussian_eddy(
     coriolis_factor = jnp.ones_like(R) * geometry.compute_coriolis_factor(latitude)  # noqa
 
     ssh = simulate_gaussian_ssh(R0, eta0, R)
-    u_geos_t, v_geos_t = simulate_gaussian_geos(R0, X, Y, ssh, coriolis_factor)
-    u_cyclo_t, v_cyclo_t = simulate_gaussian_cyclo(R0, X, Y, R, ssh, coriolis_factor)
+    ug_t, vg_t = simulate_gaussian_geos(R0, X, Y, ssh, coriolis_factor)
+    ucg_t, vcg_t = simulate_gaussian_cyclo(R0, X, Y, R, ssh, coriolis_factor)
 
     mask = jax.numpy.full_like(ssh, 0, dtype=bool)  # no land in square oceans
 
-    return X, Y, R, dXY, coriolis_factor, ssh, u_geos_t, v_geos_t, u_cyclo_t, v_cyclo_t, mask
+    return X, Y, R, dXY, coriolis_factor, ssh, ug_t, vg_t, ucg_t, vcg_t, mask
 
 
 def simulate_gaussian_ssh(R0: float, eta0: float, r: jax.Array) -> jax.Array:
@@ -38,12 +49,12 @@ def simulate_gaussian_geos(
     Y: jax.Array,
     ssh: jax.Array,
     coriolis_factor: jax.Array
-) -> [jax.Array, jax.Array]:
+) -> tuple[jax.Array, jax.Array]:
     def f():
         return 2 * geometry.GRAVITY * ssh / (coriolis_factor * R0 ** 2)
-    u_geos = Y * f()
-    v_geos = -X * f()
-    return u_geos, v_geos
+    ug = Y * f()
+    vg = -X * f()
+    return ug, vg
 
 
 def simulate_gaussian_cyclo(
@@ -53,12 +64,12 @@ def simulate_gaussian_cyclo(
     r: jax.Array,
     ssh: jax.Array,
     coriolis_factor: jax.Array
-) -> [jax.Array, jax.Array]:
+) -> tuple[jax.Array, jax.Array]:
     azim_geos = -(2 * geometry.GRAVITY * r * ssh / (coriolis_factor * R0 ** 2))
     azim_cyclo = 2 * azim_geos / (1 + jnp.sqrt(1 + 4 * azim_geos / (coriolis_factor * r)))
-    u_cyclo = -azim_cyclo * Y / r
-    v_cyclo = azim_cyclo * X / r
-    return u_cyclo, v_cyclo
+    ucg = -azim_cyclo * Y / r
+    vcg = azim_cyclo * X / r
+    return ucg, vcg
 
 
 def compute_rmse(y: jax.Array, y_hat: jax.Array) -> jax.Array:

@@ -1,8 +1,42 @@
+from typing import NamedTuple
+
 import jax
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Float
 
 from .utils import geometry, operators, sanitize
+
+
+class GeostrophyResult(NamedTuple):
+    """
+    Result of geostrophic velocity computation.
+
+    This NamedTuple provides named access to results, avoiding positional unpacking errors.
+    All fields except ``ug`` and ``vg`` are optional and depend on the
+    ``return_grids`` flag passed to the computation function.
+
+    Attributes
+    ----------
+    ug : Float[jax.Array, "lat lon"]
+        U component of geostrophic velocity on U grid
+    vg : Float[jax.Array, "lat lon"]
+        V component of geostrophic velocity on V grid
+    lat_u : Float[jax.Array, "lat lon"] | None
+        Latitudes of U grid (if ``return_grids=True``)
+    lon_u : Float[jax.Array, "lat lon"] | None
+        Longitudes of U grid (if ``return_grids=True``)
+    lat_v : Float[jax.Array, "lat lon"] | None
+        Latitudes of V grid (if ``return_grids=True``)
+    lon_v : Float[jax.Array, "lat lon"] | None
+        Longitudes of V grid (if ``return_grids=True``)
+    """
+
+    ug: Float[jax.Array, "lat lon"]
+    vg: Float[jax.Array, "lat lon"]
+    lat_u: Float[jax.Array, "lat lon"] | None = None
+    lon_u: Float[jax.Array, "lat lon"] | None = None
+    lat_v: Float[jax.Array, "lat lon"] | None = None
+    lon_v: Float[jax.Array, "lat lon"] | None = None
 
 
 # =============================================================================
@@ -10,12 +44,12 @@ from .utils import geometry, operators, sanitize
 # =============================================================================
 
 def geostrophy(
-    ssh_t: Float[Array, "lat lon"],
-    lat_t: Float[Array, "lat lon"],
-    lon_t: Float[Array, "lat lon"],
-    mask: Float[Array, "lat lon"] = None,
+    ssh_t: Float[jax.Array, "lat lon"],
+    lat_t: Float[jax.Array, "lat lon"],
+    lon_t: Float[jax.Array, "lat lon"],
+    mask: Float[jax.Array, "lat lon"] = None,
     return_grids: bool = True
-) -> [Float[Array, "lat lon"], ...]:
+) -> GeostrophyResult:
     """
     Computes the geostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field.
 
@@ -23,13 +57,13 @@ def geostrophy(
 
     Parameters
     ----------
-    ssh_t : Float[Array, "lat lon"]
+    ssh_t : Float[jax.Array, "lat lon"]
         SSH field (on the T grid)
-    lat_t : Float[Array, "lat lon"]
+    lat_t : Float[jax.Array, "lat lon"]
         Latitudes of the T grid
-    lon_t : Float[Array, "lat lon"]
+    lon_t : Float[jax.Array, "lat lon"]
         Longitudes of the T grid
-    mask : Float[Array, "lat lon"], optional
+    mask : Float[jax.Array, "lat lon"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` `nan` values
@@ -40,18 +74,15 @@ def geostrophy(
 
     Returns
     -------
-    u_geos_u : Float[Array, "lat lon"]
-        U component of the geostrophic SSC velocity field (on the U grid)
-    v_geos_v : Float[Array, "lat lon"]
-        V component of the geostrophic SSC velocity field (on the V grid)
-    lat_u : Float[Array, "lat lon"]
-        Latitudes of the U grid, if ``return_grids=True``
-    lon_u : Float[Array, "lat lon"]
-        Longitudes of the U grid, if ``return_grids=True``
-    lat_v : Float[Array, "lat lon"]
-        Latitudes of the V grid, if ``return_grids=True``
-    lon_v : Float[Array, "lat lon"]
-        Longitudes of the V grid, if ``return_grids=True``
+    GeostrophyResult
+        A named tuple containing:
+
+        - **ug** : U component of the geostrophic SSC velocity field (on the U grid)
+        - **vg** : V component of the geostrophic SSC velocity field (on the V grid)
+        - **lat_u** : Latitudes of the U grid (if ``return_grids=True``, else ``None``)
+        - **lon_u** : Longitudes of the U grid (if ``return_grids=True``, else ``None``)
+        - **lat_v** : Latitudes of the V grid (if ``return_grids=True``, else ``None``)
+        - **lon_v** : Longitudes of the V grid (if ``return_grids=True``, else ``None``)
     """
     # Make sure the mask is initialized
     is_land = sanitize.init_land_mask(ssh_t, mask)
@@ -63,29 +94,35 @@ def geostrophy(
     # Handle spurious and masked data
     ssh_t = sanitize.sanitize_data(ssh_t, jnp.nan, is_land)
 
-    u_geos_u, v_geos_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t, is_land)
+    ug_u, vg_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t, is_land)
 
     # Handle masked data
-    u_geos_u = sanitize.sanitize_data(u_geos_u, jnp.nan, is_land)
-    v_geos_v = sanitize.sanitize_data(v_geos_v, jnp.nan, is_land)
+    ug_u = sanitize.sanitize_data(ug_u, jnp.nan, is_land)
+    vg_v = sanitize.sanitize_data(vg_v, jnp.nan, is_land)
 
-    res = (u_geos_u, v_geos_v)
+    lat_u, lon_u, lat_v, lon_v = None, None, None, None
     if return_grids:
         # Compute U and V grids
         lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-        res = res + (lat_u, lon_u, lat_v, lon_v)
 
-    return res
+    return GeostrophyResult(
+        ug=ug_u,
+        vg=vg_v,
+        lat_u=lat_u,
+        lon_u=lon_u,
+        lat_v=lat_v,
+        lon_v=lon_v
+    )
 
 
 @jax.jit
 def _geostrophy(
-    ssh_t: Float[Array, "lat lon"],
-    dx_t: Float[Array, "lat lon"],
-    dy_t: Float[Array, "lat lon"],
-    coriolis_factor_t: Float[Array, "lat lon"],
-    mask: Float[Array, "lat lon"]
-) -> [Float[Array, "lat lon"], Float[Array, "lat lon"]]:
+    ssh_t: Float[jax.Array, "lat lon"],
+    dx_t: Float[jax.Array, "lat lon"],
+    dy_t: Float[jax.Array, "lat lon"],
+    coriolis_factor_t: Float[jax.Array, "lat lon"],
+    mask: Float[jax.Array, "lat lon"]
+) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
     # Compute the gradient of the ssh
     ssh_dx_u = operators.derivative(ssh_t, dx_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
     ssh_dy_v = operators.derivative(ssh_t, dy_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
@@ -105,7 +142,7 @@ def _geostrophy(
     )  # (T(j), T(j+1)) -> V(j)
 
     # Computing the geostrophic velocities
-    u_geos_u = - geometry.GRAVITY * ssh_dy_u / coriolis_factor_u  # U(i)
-    v_geos_v = geometry.GRAVITY * ssh_dx_v / coriolis_factor_v  # V(j)
+    ug_u = - geometry.GRAVITY * ssh_dy_u / coriolis_factor_u  # U(i)
+    vg_v = geometry.GRAVITY * ssh_dx_v / coriolis_factor_v  # V(j)
 
-    return u_geos_u, v_geos_v
+    return ug_u, vg_v

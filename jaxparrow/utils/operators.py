@@ -1,16 +1,17 @@
 from typing import Literal
 
+import jax
 from jax import lax
 import jax.numpy as jnp
-from jaxtyping import Array, Float
+from jaxtyping import Float
 
 
 def interpolation(
-    field: Float[Array, "lat lon"],
-    mask: Float[Array, "lat lon"],
+    field: Float[jax.Array, "lat lon"],
+    mask: Float[jax.Array, "lat lon"],
     axis: Literal[0, 1],
     padding: Literal["left", "right"]
-) -> Float[Array, "lat lon"]:
+) -> Float[jax.Array, "lat lon"]:
     """
     Interpolates the values of a ``field`` along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/`x`),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
@@ -19,9 +20,9 @@ def interpolation(
 
     Parameters
     ----------
-    field : Float[Array, "lat lon"]
+    field : Float[jax.Array, "lat lon"]
         Field to interpolate
-    mask : Float[Array, "lat lon"]
+    mask : Float[jax.Array, "lat lon"]
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
     axis : Literal[0, 1]
         Axis along which interpolation is performed
@@ -35,7 +36,7 @@ def interpolation(
 
     Returns
     -------
-    field : Float[Array, "lat lon"]
+    field : Float[jax.Array, "lat lon"]
         Interpolated field
     """
     f = jnp.moveaxis(field, axis, -1)
@@ -69,12 +70,12 @@ def interpolation(
 
 
 def derivative(
-    field: Float[Array, "lat lon"],
-    dxy: Float[Array, "lat lon"],
-    mask: Float[Array, "lat lon"],
+    field: Float[jax.Array, "lat lon"],
+    dxy: Float[jax.Array, "lat lon"],
+    mask: Float[jax.Array, "lat lon"],
     axis: Literal[0, 1],
     padding: Literal["left", "right"]
-) -> Float[Array, "lat lon"]:
+) -> Float[jax.Array, "lat lon"]:
     """
     Differentiates a ``field``, using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x'),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
@@ -83,11 +84,11 @@ def derivative(
 
     Parameters
     ----------
-    field : Float[Array, "lat lon"]
+    field : Float[jax.Array, "lat lon"]
         Field to differentiate
-    dxy : Float[Array, "lat lon"]
+    dxy : Float[jax.Array, "lat lon"]
         Spatial steps
-    mask : Float[Array, "lat lon"]
+    mask : Float[jax.Array, "lat lon"]
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
     axis : Literal[0, 1]
         Axis along which interpolation is performed
@@ -101,7 +102,7 @@ def derivative(
 
     Returns
     -------
-    field : Float[Array, "lat lon"]
+    field : Float[jax.Array, "lat lon"]
         Interpolated field
     """
     f = jnp.moveaxis(field, axis, -1)
