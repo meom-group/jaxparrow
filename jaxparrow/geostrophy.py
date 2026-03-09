@@ -101,11 +101,6 @@ def geostrophy(
 
     ug_u, vg_v = _geostrophy(ssh_t, dx_t, dy_t, coriolis_factor_t, grid_angle_t, is_land)
 
-    # Extrapolate velocities to fill NaN cells within the valid ocean domain
-    # This recovers edge cells that became NaN due to derivative computation
-    ug_u = operators.extrapolate_to_valid(ug_u, is_land)
-    vg_v = operators.extrapolate_to_valid(vg_v, is_land)
-
     # Handle masked data (set land cells to NaN)
     ug_u = sanitize.sanitize_data(ug_u, jnp.nan, is_land)
     vg_v = sanitize.sanitize_data(vg_v, jnp.nan, is_land)
