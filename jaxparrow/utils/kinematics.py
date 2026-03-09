@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from jaxtyping import Float
 
 from .geometry import compute_coriolis_factor, compute_spatial_step, compute_uv_grids
-from .operators import derivative, interpolation
+from .operators import derivative, extrapolate_to_valid, interpolation
 from .sanitize import init_land_mask, sanitize_data
 
 
@@ -160,6 +160,9 @@ def normalized_relative_vorticity(
         w = interpolation(w_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
     else:
         w = w_f
+
+    # Extrapolate to fill NaN cells within the valid ocean domain
+    w = extrapolate_to_valid(w, mask)
 
     w = sanitize_data(w, jnp.nan, mask)
 

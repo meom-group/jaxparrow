@@ -228,6 +228,12 @@ def assemble_result(
     CyclogeostrophyResult
         Named tuple with computed velocities and optional fields
     """
+    # Extrapolate velocities to fill NaN cells within the valid ocean domain
+    # This recovers edge cells that became NaN due to derivative computation
+    ucg_u = operators.extrapolate_to_valid(ucg_u, setup.is_land)
+    vcg_v = operators.extrapolate_to_valid(vcg_v, setup.is_land)
+
+    # Handle masked data (set land cells to NaN)
     ucg_u = sanitize.sanitize_data(ucg_u, jnp.nan, setup.is_land)
     vcg_v = sanitize.sanitize_data(vcg_v, jnp.nan, setup.is_land)
 
