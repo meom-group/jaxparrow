@@ -1,5 +1,3 @@
-"""Core utilities, types, and internal functions for cyclogeostrophy computations."""
-
 from typing import NamedTuple
 
 import jax

@@ -42,24 +42,13 @@ def interpolation(
     f = jnp.moveaxis(field, axis, -1)
 
     mid = (f[:, :-1] + f[:, 1:]) * 0.5
-    
-    # handle mask: extrapolate at land boundaries (up to 1 cell)
-    mid = jnp.where(
-        jnp.isnan(mid),
-        f[:, :-1],
-        mid
-    )
-    mid = jnp.where(
-        jnp.isnan(mid),
-        f[:, 1:],
-        mid
-    )
 
-    # extrapolate at the domain boundary
+    # Pad at the domain boundary with NaN (will be handled by extrapolate_to_valid)
+    nan_pad = jnp.full((f.shape[0], 1), jnp.nan)
     mid = lax.cond(
         padding == "left",
-        lambda: jnp.concatenate([f[:, :1], mid], axis=-1),
-        lambda: jnp.concatenate([mid, f[:, -1:]], axis=-1)
+        lambda: jnp.concatenate([nan_pad, mid], axis=-1),
+        lambda: jnp.concatenate([mid, nan_pad], axis=-1)
     )
 
     mid = jnp.moveaxis(mid, -1, axis)
@@ -116,11 +105,11 @@ def derivative(
     # set the derivative to 0 (flat extrapolation assumption)
     mid = jnp.nan_to_num(mid, nan=0.0, posinf=0.0, neginf=0.0)
 
-    # extrapolate at the domain boundary
+    # pad (shape preserved) with nan at the domain boundary (will be handled by extrapolate_to_valid)
     mid = lax.cond(
         padding == "left",
-        lambda: jnp.pad(mid, pad_width=((0, 0), (1, 0)), mode="edge"),
-        lambda: jnp.pad(mid, pad_width=((0, 0), (0, 1)), mode="edge")
+        lambda: jnp.pad(mid, pad_width=((0, 0), (1, 0)), mode="empty"),
+        lambda: jnp.pad(mid, pad_width=((0, 0), (0, 1)), mode="empty")
     )
 
     mid = jnp.moveaxis(mid, -1, axis)
