@@ -86,6 +86,81 @@ def compute_coriolis_factor(
     return 2 * EARTH_ANG_SPEED * jnp.sin(lat * P0)
 
 
+def compute_grid_angle(
+    lat: Float[jax.Array, "lat lon"],
+    lon: Float[jax.Array, "lat lon"]
+) -> Float[jax.Array, "lat lon"]:
+    """
+    Computes the local angle of the grid i-axis (axis=1) relative to geographic east.
+
+    For curvilinear grids (e.g., SWOT swaths, tripolar grids), the grid axes are not aligned
+    with geographic east-west/north-south directions. This function computes the rotation angle
+    needed to transform gradients from grid coordinates to geographic coordinates.
+
+    The angle is measured counterclockwise from geographic east to the grid i-direction.
+
+    Parameters
+    ----------
+    lat : Float[jax.Array, "lat lon"]
+        Latitude grid
+    lon : Float[jax.Array, "lat lon"]
+        Longitude grid
+
+    Returns
+    -------
+    angle : Float[jax.Array, "lat lon"]
+        Rotation angle in radians, measured counterclockwise from geographic east
+        to the grid i-direction. Range is [-pi, pi].
+
+    Notes
+    -----
+    The angle is computed using the initial bearing formula between adjacent grid points
+    along the i-axis (axis=1). The formula computes the azimuth from north (clockwise positive),
+    which is then converted to angle from east (counterclockwise positive).
+
+    For orthogonal grids, the j-axis direction is at angle + pi/2.
+    """
+    # Use central differences where possible, forward/backward at boundaries
+    lat_rad = jnp.radians(lat)
+    lon_rad = jnp.radians(lon)
+
+    # Compute differences in longitude (handling wraparound)
+    dlon = jnp.zeros_like(lon)
+    dlon = dlon.at[:, 1:-1].set(lon[:, 2:] - lon[:, :-2])  # central diff
+    dlon = dlon.at[:, 0].set(lon[:, 1] - lon[:, 0])  # forward diff at left
+    dlon = dlon.at[:, -1].set(lon[:, -1] - lon[:, -2])  # backward diff at right
+
+    # Normalize to [-180, 180]
+    dlon = (dlon + 180.0) % 360.0 - 180.0
+    dlon_rad = jnp.radians(dlon)
+
+    # Compute latitude at neighboring points for bearing calculation
+    lat1_rad = jnp.zeros_like(lat_rad)
+    lat1_rad = lat1_rad.at[:, 1:-1].set(lat_rad[:, :-2])
+    lat1_rad = lat1_rad.at[:, 0].set(lat_rad[:, 0])
+    lat1_rad = lat1_rad.at[:, -1].set(lat_rad[:, -2])
+
+    lat2_rad = jnp.zeros_like(lat_rad)
+    lat2_rad = lat2_rad.at[:, 1:-1].set(lat_rad[:, 2:])
+    lat2_rad = lat2_rad.at[:, 0].set(lat_rad[:, 1])
+    lat2_rad = lat2_rad.at[:, -1].set(lat_rad[:, -1])
+
+    # Initial bearing formula: bearing from point 1 to point 2
+    # bearing = atan2(sin(dlon)*cos(lat2), cos(lat1)*sin(lat2) - sin(lat1)*cos(lat2)*cos(dlon))
+    # This gives bearing measured clockwise from north
+    x = jnp.sin(dlon_rad) * jnp.cos(lat2_rad)
+    y = jnp.cos(lat1_rad) * jnp.sin(lat2_rad) - jnp.sin(lat1_rad) * jnp.cos(lat2_rad) * jnp.cos(dlon_rad)
+    bearing = jnp.arctan2(x, y)  # radians, clockwise from north
+
+    # Convert bearing (clockwise from north) to angle (counterclockwise from east)
+    # If bearing = 0 (north), angle = pi/2
+    # If bearing = pi/2 (east), angle = 0
+    # angle = pi/2 - bearing
+    angle = jnp.pi / 2 - bearing
+
+    return angle
+
+
 def compute_uv_grids(
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"]
