@@ -133,3 +133,56 @@ def derivative(
     mid = jnp.where(mask, jnp.nan, mid)
 
     return mid / dxy
+
+
+def rotate_to_geographic(
+    grad_i: Float[jax.Array, "lat lon"],
+    grad_j: Float[jax.Array, "lat lon"],
+    grid_angle: Float[jax.Array, "lat lon"]
+) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
+    """
+    Rotates gradients from grid coordinates to geographic coordinates.
+
+    For curvilinear grids (e.g., SWOT swaths, tripolar grids), the grid axes are not aligned
+    with geographic east-west/north-south directions. This function rotates gradient components
+    from grid (i, j) coordinates to geographic (x=east, y=north) coordinates.
+
+    Parameters
+    ----------
+    grad_i : Float[jax.Array, "lat lon"]
+        Gradient component along the grid i-axis (axis=1)
+    grad_j : Float[jax.Array, "lat lon"]
+        Gradient component along the grid j-axis (axis=0)
+    grid_angle : Float[jax.Array, "lat lon"]
+        Angle in radians from geographic east to the grid i-direction (counterclockwise positive).
+        Can be computed using :func:`geometry.compute_grid_angle`.
+
+    Returns
+    -------
+    grad_x : Float[jax.Array, "lat lon"]
+        Gradient in the geographic x (eastward) direction
+    grad_y : Float[jax.Array, "lat lon"]
+        Gradient in the geographic y (northward) direction
+
+    Notes
+    -----
+    The rotation from grid coordinates (i, j) to geographic coordinates (x, y) assumes
+    the grid is locally orthogonal (j-axis at angle θ + π/2 from east):
+
+    .. math::
+
+        \\frac{\\partial f}{\\partial x} = \\cos(\\theta) \\frac{\\partial f}{\\partial s_i} 
+        - \\sin(\\theta) \\frac{\\partial f}{\\partial s_j}
+
+        \\frac{\\partial f}{\\partial y} = \\sin(\\theta) \\frac{\\partial f}{\\partial s_i} 
+        + \\cos(\\theta) \\frac{\\partial f}{\\partial s_j}
+
+    where θ is the angle from geographic east to the grid i-axis.
+    """
+    cos_theta = jnp.cos(grid_angle)
+    sin_theta = jnp.sin(grid_angle)
+
+    grad_x = cos_theta * grad_i - sin_theta * grad_j
+    grad_y = sin_theta * grad_i + cos_theta * grad_j
+
+    return grad_x, grad_y

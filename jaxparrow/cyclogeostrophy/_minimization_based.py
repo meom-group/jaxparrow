@@ -96,6 +96,7 @@ def minimization_based(
         setup.ug_u, setup.vg_v,
         setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
         setup.coriolis_factor_u, setup.coriolis_factor_v,
+        setup.grid_angle_u, setup.grid_angle_v,
         setup.is_land, n_it, optim
     )
 
@@ -118,6 +119,8 @@ def _minimization_based(
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_u: Float[jax.Array, "lat lon"],
     coriolis_factor_v: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"],
+    grid_angle_v: Float[jax.Array, "lat lon"],
     mask: Float[jax.Array, "lat lon"],
     n_it: int,
     optim: optax.GradientTransformation
@@ -125,7 +128,8 @@ def _minimization_based(
     def loss_fn(args):
         ucg_u, vcg_v = args
         return _cyclogeostrophic_loss(
-            ug_u, vg_v, ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
+            ug_u, vg_v, ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
+            mask, grid_angle_u, grid_angle_v
         )
     
     def step_fn(carry, _):

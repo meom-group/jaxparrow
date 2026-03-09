@@ -48,6 +48,12 @@ class CyclogeostrophySetup(NamedTuple):
         Coriolis factor on V grid
     coriolis_factor_t : Float[jax.Array, "lat lon"]
         Coriolis factor on T grid
+    grid_angle_u : Float[jax.Array, "lat lon"]
+        Grid rotation angle on U grid (radians, counterclockwise from east)
+    grid_angle_v : Float[jax.Array, "lat lon"]
+        Grid rotation angle on V grid (radians, counterclockwise from east)
+    grid_angle_t : Float[jax.Array, "lat lon"]
+        Grid rotation angle on T grid (radians, counterclockwise from east)
     """
 
     is_land: Float[jax.Array, "lat lon"]
@@ -64,6 +70,9 @@ class CyclogeostrophySetup(NamedTuple):
     coriolis_factor_u: Float[jax.Array, "lat lon"]
     coriolis_factor_v: Float[jax.Array, "lat lon"]
     coriolis_factor_t: Float[jax.Array, "lat lon"]
+    grid_angle_u: Float[jax.Array, "lat lon"]
+    grid_angle_v: Float[jax.Array, "lat lon"]
+    grid_angle_t: Float[jax.Array, "lat lon"]
 
 
 class CyclogeostrophyResult(NamedTuple):
@@ -121,7 +130,7 @@ def setup_cyclogeostrophy(
     Computes all preliminary values needed for cyclogeostrophic calculations.
 
     This includes: land mask, geostrophic velocities, U/V grids, spatial steps,
-    and Coriolis factors on all grids.
+    Coriolis factors, and grid rotation angles on all grids.
 
     Parameters
     ----------
@@ -159,6 +168,11 @@ def setup_cyclogeostrophy(
     coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
     coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
 
+    # Compute grid rotation angles for curvilinear grid support
+    grid_angle_u = geometry.compute_grid_angle(lat_u, lon_u)
+    grid_angle_v = geometry.compute_grid_angle(lat_v, lon_v)
+    grid_angle_t = geometry.compute_grid_angle(lat_t, lon_t)
+
     return CyclogeostrophySetup(
         is_land=is_land,
         ug_u=ug_u,
@@ -174,6 +188,9 @@ def setup_cyclogeostrophy(
         coriolis_factor_u=coriolis_factor_u,
         coriolis_factor_v=coriolis_factor_v,
         coriolis_factor_t=coriolis_factor_t,
+        grid_angle_u=grid_angle_u,
+        grid_angle_v=grid_angle_v,
+        grid_angle_t=grid_angle_t,
     )
 
 
@@ -494,12 +511,14 @@ def _cyclogeostrophic_loss(
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_u: Float[jax.Array, "lat lon"],
     coriolis_factor_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"] = None,
+    grid_angle_v: Float[jax.Array, "lat lon"] = None
 ) -> Float[jax.Array, ""]:
     u_imbalance, v_imbalance = _cyclogeostrophic_imbalance(
         ug_u, vg_v, ucg_u, vcg_v,
         dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-        mask
+        mask, grid_angle_u, grid_angle_v
     )
 
     return jnp.nansum(u_imbalance ** 2 + v_imbalance ** 2)
@@ -516,9 +535,11 @@ def _cyclogeostrophic_imbalance(
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_u: Float[jax.Array, "lat lon"],
     coriolis_factor_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"] = None,
+    grid_angle_v: Float[jax.Array, "lat lon"] = None
 ) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
-    u_adv_v, v_adv_u = _advection(ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, mask)
+    u_adv_v, v_adv_u = _advection(ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, mask, grid_angle_u, grid_angle_v)
 
     u_imbalance_u = ucg_u + v_adv_u / coriolis_factor_u - ug_u
     v_imbalance_v = vcg_v - u_adv_v / coriolis_factor_v - vg_v
@@ -533,10 +554,15 @@ def _advection(
     dx_v: Float[jax.Array, "lat lon"],
     dy_u: Float[jax.Array, "lat lon"],
     dy_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"] = None,
+    grid_angle_v: Float[jax.Array, "lat lon"] = None
 ) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
     """
     Computes the advection terms of a 2d velocity field, on a C-grid, following NEMO convention.
+
+    For curvilinear grids, gradients are rotated from grid coordinates to geographic coordinates
+    before computing the advection terms.
 
     Parameters
     ----------
@@ -554,6 +580,10 @@ def _advection(
         Spatial steps on the V grid along `y`, in meters
     mask : Float[jax.Array, "lat lon"]
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+    grid_angle_u : Float[jax.Array, "lat lon"], optional
+        Grid rotation angle on U grid (radians). If None, assumes rectilinear grid (no rotation).
+    grid_angle_v : Float[jax.Array, "lat lon"], optional
+        Grid rotation angle on V grid (radians). If None, assumes rectilinear grid (no rotation).
 
     Returns
     -------
@@ -562,8 +592,8 @@ def _advection(
     v_adv_u : Float[jax.Array, "lat lon"]
         V component of the advection term, on the U grid
     """
-    u_adv_v = _u_advection_v(u_u, v_v, dx_v, dy_v, mask)
-    v_adv_u = _v_advection_u(u_u, v_v, dx_u, dy_u, mask)
+    u_adv_v = _u_advection_v(u_u, v_v, dx_v, dy_v, mask, grid_angle_v)
+    v_adv_u = _v_advection_u(u_u, v_v, dx_u, dy_u, mask, grid_angle_u)
 
     return u_adv_v, v_adv_u
 
@@ -573,13 +603,24 @@ def _u_advection_v(
     v_v: Float[jax.Array, "lat lon"],
     dx_u: Float[jax.Array, "lat lon"],
     dy_u: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_v: Float[jax.Array, "lat lon"] = None
 ) -> Float[jax.Array, "lat lon"]:
-    dudx_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
-    dudx_v = operators.interpolation(dudx_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    """
+    Computes u * ∂u/∂x + v * ∂u/∂y at V points in geographic coordinates.
+    """
+    # Grid-coordinate gradients
+    dudi_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
+    dudi_v = operators.interpolation(dudi_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
 
-    dudy_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    dudy_v = operators.interpolation(dudy_f, mask, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
+    dudj_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
+    dudj_v = operators.interpolation(dudj_f, mask, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
+
+    # Rotate to geographic coordinates if grid angle provided
+    if grid_angle_v is not None:
+        dudx_v, dudy_v = operators.rotate_to_geographic(dudi_v, dudj_v, grid_angle_v)
+    else:
+        dudx_v, dudy_v = dudi_v, dudj_v
 
     u_t = operators.interpolation(u_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
     u_v = operators.interpolation(u_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
@@ -594,13 +635,24 @@ def _v_advection_u(
     v_v: Float[jax.Array, "lat lon"],
     dx_v: Float[jax.Array, "lat lon"],
     dy_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"] = None
 ) -> Float[jax.Array, "lat lon"]:
-    dvdx_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dvdx_u = operators.interpolation(dvdx_f, mask, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
+    """
+    Computes u * ∂v/∂x + v * ∂v/∂y at U points in geographic coordinates.
+    """
+    # Grid-coordinate gradients
+    dvdi_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
+    dvdi_u = operators.interpolation(dvdi_f, mask, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
 
-    dvdy_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
-    dvdy_u = operators.interpolation(dvdy_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+    dvdj_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
+    dvdj_u = operators.interpolation(dvdj_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
+
+    # Rotate to geographic coordinates if grid angle provided
+    if grid_angle_u is not None:
+        dvdx_u, dvdy_u = operators.rotate_to_geographic(dvdi_u, dvdj_u, grid_angle_u)
+    else:
+        dvdx_u, dvdy_u = dvdi_u, dvdj_u
 
     v_t = operators.interpolation(v_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
     v_u = operators.interpolation(v_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
@@ -618,7 +670,8 @@ def _radius_of_curvature(
     dy_u: Float[jax.Array, "lat lon"],
     dy_v: Float[jax.Array, "lat lon"],
     mask: Float[jax.Array, "lat lon"],
-    vel_on_uv: bool
+    vel_on_uv: bool,
+    grid_angle_t: Float[jax.Array, "lat lon"] = None
 ) -> Float[jax.Array, "lat lon"]:
     if not vel_on_uv:
         u_t = u
@@ -633,16 +686,28 @@ def _radius_of_curvature(
 
     V_t = kinematics.magnitude(u_t, v_t, vel_on_uv=False)
 
-    du_dx_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-    du_dy_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
+    # Derivatives along grid axes
+    du_di_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    du_dj_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
 
-    dv_dx_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dv_dy_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    dv_di_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
+    dv_dj_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
 
-    du_dy_v = operators.interpolation(du_dy_f, mask, axis=1, padding="left")  # (F(i), F(i+1)) -> V(i+1)
-    du_dy_t = operators.interpolation(du_dy_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
-    dv_dx_u = operators.interpolation(dv_dx_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
-    dv_dx_t = operators.interpolation(dv_dx_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+    # Interpolate to T grid
+    du_dj_v = operators.interpolation(du_dj_f, mask, axis=1, padding="left")  # (F(i), F(i+1)) -> V(i+1)
+    du_dj_t = operators.interpolation(du_dj_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
+    dv_di_u = operators.interpolation(dv_di_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
+    dv_di_t = operators.interpolation(dv_di_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+
+    # Rotate to geographic coordinates if grid angle is provided
+    if grid_angle_t is not None:
+        du_dx_t, du_dy_t = operators.rotate_to_geographic(du_di_t, du_dj_t, grid_angle_t)
+        dv_dx_t, dv_dy_t = operators.rotate_to_geographic(dv_di_t, dv_dj_t, grid_angle_t)
+    else:
+        du_dx_t = du_di_t
+        du_dy_t = du_dj_t
+        dv_dx_t = dv_di_t
+        dv_dy_t = dv_dj_t
 
     numerator = V_t ** 3
     denominator = u_t ** 2 * dv_dx_t - v_t ** 2 * du_dy_t - u_t * v_t * (du_dx_t - dv_dy_t)

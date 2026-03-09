@@ -80,6 +80,7 @@ def fixed_point(
         setup.ug_u, setup.vg_v,
         setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
         setup.coriolis_factor_u, setup.coriolis_factor_v,
+        setup.grid_angle_u, setup.grid_angle_v,
         setup.is_land, n_it, res_eps, return_losses
     )
 
@@ -102,6 +103,8 @@ def _fixed_point(
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_u: Float[jax.Array, "lat lon"],
     coriolis_factor_v: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"],
+    grid_angle_v: Float[jax.Array, "lat lon"],
     mask: Float[jax.Array, "lat lon"],
     n_it: int,
     res_eps: float,
@@ -112,7 +115,9 @@ def _fixed_point(
         return _fp_step(
             ug_u, vg_v,
             dx_u, dx_v, dy_u, dy_v,
-            coriolis_factor_u, coriolis_factor_v, mask,
+            coriolis_factor_u, coriolis_factor_v,
+            grid_angle_u, grid_angle_v,
+            mask,
             res_eps, return_losses,
             *carry
         )
@@ -136,6 +141,8 @@ def _fp_step(
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_u: Float[jax.Array, "lat lon"],
     coriolis_factor_v: Float[jax.Array, "lat lon"],
+    grid_angle_u: Float[jax.Array, "lat lon"],
+    grid_angle_v: Float[jax.Array, "lat lon"],
     mask: Float[jax.Array, "lat lon"],
     res_eps: float,
     return_losses: bool,
@@ -156,13 +163,14 @@ def _fp_step(
     loss = lax.cond(
         return_losses,
         lambda: _cyclogeostrophic_loss(
-            ug_u, vg_v, u_n, v_n, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
+            ug_u, vg_v, u_n, v_n, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
+            grid_angle_u, grid_angle_v
         ),
         lambda: jnp.nan
     )
 
     # next it
-    u_adv_v, v_adv_u = _advection(u_n, v_n, dx_u, dx_v, dy_u, dy_v, mask)
+    u_adv_v, v_adv_u = _advection(u_n, v_n, dx_u, dx_v, dy_u, dy_v, mask, grid_angle_u, grid_angle_v)
     u_np1 = ug_u - jnp.nan_to_num(v_adv_u / coriolis_factor_u, copy=False, nan=0, posinf=0, neginf=0)
     v_np1 = vg_v + jnp.nan_to_num(u_adv_v / coriolis_factor_v, copy=False, nan=0, posinf=0, neginf=0)
 

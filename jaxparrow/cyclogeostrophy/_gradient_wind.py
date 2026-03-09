@@ -59,7 +59,7 @@ def gradient_wind(
     ucg_u, vcg_v = _gradient_wind(
         setup.ug_u, setup.vg_v,
         setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
-        setup.coriolis_factor_t, setup.is_land
+        setup.coriolis_factor_t, setup.is_land, setup.grid_angle_t
     )
 
     return assemble_result(
@@ -78,7 +78,8 @@ def _gradient_wind(
     dy_u: Float[jax.Array, "lat lon"],
     dy_v: Float[jax.Array, "lat lon"],
     coriolis_factor_t: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"]
+    mask: Float[jax.Array, "lat lon"],
+    grid_angle_t: Float[jax.Array, "lat lon"]
 ) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
@@ -113,7 +114,7 @@ def _gradient_wind(
         V component of the cyclogeostrophic SSC velocity field (on the V grid)
     """
     R = _radius_of_curvature(
-        ug_u, vg_v, dx_u, dx_v, dy_u, dy_v, mask, vel_on_uv=True
+        ug_u, vg_v, dx_u, dx_v, dy_u, dy_v, mask, vel_on_uv=True, grid_angle_t=grid_angle_t
     )
 
     V_g = kinematics.magnitude(ug_u, vg_v, mask)
