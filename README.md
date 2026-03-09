@@ -27,18 +27,26 @@ By default, `jaxparrow` will install a CPU-only version of JAX if no other versi
 
 ## Usage
 
-The function you are most probably looking for is [`cyclogeostrophy`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.cyclogeostrophy).
-It computes the cyclogeostrophic velocity field (returned as two `2darray`) from:
+Estimating the cyclogeostrophic currents from a given Sea Surface Height field can be achieved using any of the following methods:
 
-- a SSH field (a `2darray`),
-- the latitude and longitude grids at the T points (two `2darray`).
+- [`minimization_based`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.minimization_based),
+- [`gradient_wind`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.gradient_wind),
+- [`fixed_point`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.fixed_point).
 
-In a Python script, assuming that the input grids have already been initialised / imported, estimating the cyclogeostrophic velocities for a single timestamp would resort to:
+They all need at least:
+
+- a SSH field (a `2d jax.Array`),
+- the latitude and longitude grids at the T points (two `2d jax.Array`).
+
+In a Python script, assuming that the input grids have already been initialised / imported, estimating the cyclogeostrophic currents for a single timestamp would resort to:
 
 ```python
-from jaxparrow import cyclogeostrophy
+from jaxparrow import minimization_based
 
-ucg, vcg = cyclogeostrophy(ssh_2d, lat_2d, lon_2d, return_grids=False)
+mb_result = minimization_based(ssh_2d, lat_2d, lon_2d)
+
+ucg_2d = mb_result.ucg  # 2d jax.Array
+vcg_2d = mb_result.vcg  # 2d jax.Array
 ```
 
 *Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).*
@@ -56,12 +64,11 @@ To vectorise the estimation of the cyclogeostrophy along a first time dimension,
 import jax
 
 vmap_cyclogeostrophy = jax.vmap(cyclogeostrophy, in_axes=(0, None, None))
-u_cg_3d, v_cg_3d = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
-```
+mb_result = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
 
-By default, the `cyclogeostrophy` function relies on our minimization-based method.
-Its `method` argument provides the ability to use the fixed-point method instead, as described by [Penven *et al.* (2014)](https://doi.org/10.1016/j.dsr2.2013.10.015).
-Additional arguments also give a finer control over the different approaches hyperparameters.
+ucg_3d = mb_result.ucg  # 3d jax.Array
+vcg_3d = mb_result.vcg  # 3d jax.Array
+```
 
 See `jaxparrow` [documentation](https://jaxparrow.readthedocs.io/en/latest/) for more details (including the API description and step-by-step examples).
 
