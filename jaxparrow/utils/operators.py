@@ -15,8 +15,13 @@ def interpolation(
     """
     Interpolates the values of a ``field`` along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/`x`),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
-    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain,
-    using nearest non interpolated value at the padded edge.
+    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain.
+
+    An open boundary condition is applied:
+
+    - At domain edges: the interpolated value equals the nearest interior value
+    - At land/NaN boundaries: if one of the two values is NaN, the valid value is used;
+      if both are NaN, the result is NaN
 
     Parameters
     ----------
@@ -41,25 +46,27 @@ def interpolation(
     """
     f = jnp.moveaxis(field, axis, -1)
 
-    mid = (f[:, :-1] + f[:, 1:]) * 0.5
-    
-    # handle mask: extrapolate at land boundaries (up to 1 cell)
+    left = f[:, :-1]
+    right = f[:, 1:]
+
+    left_valid = ~jnp.isnan(left)
+    right_valid = ~jnp.isnan(right)
+
+    # Open boundary condition for NaN values:
+    # - Both valid: average
+    # - One valid: use the valid one
+    # - Both NaN: NaN
     mid = jnp.where(
-        jnp.isnan(mid),
-        f[:, :-1],
-        mid
-    )
-    mid = jnp.where(
-        jnp.isnan(mid),
-        f[:, 1:],
-        mid
+        left_valid & right_valid,
+        (left + right) * 0.5,
+        jnp.where(left_valid, left, jnp.where(right_valid, right, jnp.nan))
     )
 
-    # extrapolate at the domain boundary
+    # Pad at the domain boundary with edge value (open boundary condition)
     mid = lax.cond(
         padding == "left",
-        lambda: jnp.concatenate([f[:, :1], mid], axis=-1),
-        lambda: jnp.concatenate([mid, f[:, -1:]], axis=-1)
+        lambda: jnp.concatenate([mid[:, 0:1], mid], axis=-1),
+        lambda: jnp.concatenate([mid, mid[:, -1:]], axis=-1)
     )
 
     mid = jnp.moveaxis(mid, -1, axis)
@@ -72,15 +79,23 @@ def interpolation(
 def derivative(
     field: Float[jax.Array, "lat lon"],
     dxy: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
+    land_mask: Float[jax.Array, "lat lon"],
     axis: Literal[0, 1],
     padding: Literal["left", "right"]
 ) -> Float[jax.Array, "lat lon"]:
     """
     Differentiates a ``field``, using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x'),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
-    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain,
-    using nearest derivative value at the padded edge.
+    to the `right` (i.e. `East` if ``axis=1``, `North` if ``axis=0``) of the domain.
+
+    An open boundary condition is applied (zero second derivative):
+
+    - At domain edges: the boundary derivative equals the nearest interior derivative
+    - At land/NaN boundaries: if one of the two values is NaN, the derivative is filled
+      with the immediate neighbor derivative; if both neighbors are NaN, the result is NaN
+
+    This is appropriate for domains with sharp physical boundaries (e.g., SWOT swaths)
+    where the signal continues smoothly beyond the observation edge.
 
     Parameters
     ----------
@@ -88,8 +103,9 @@ def derivative(
         Field to differentiate
     dxy : Float[jax.Array, "lat lon"]
         Spatial steps
-    mask : Float[jax.Array, "lat lon"]
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+    land_mask : Float[jax.Array, "lat lon"]
+        Mask indicating the land domain where extrapolation should be applied.
+        `False`/`0` indicates ocean cells, `True`/`1` indicates land cells.
     axis : Literal[0, 1]
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
@@ -103,34 +119,35 @@ def derivative(
     Returns
     -------
     field : Float[jax.Array, "lat lon"]
-        Interpolated field
+        Differentiated field
     """
     f = jnp.moveaxis(field, axis, -1)
 
     mid = jnp.diff(f, axis=-1)
-    
-    # handle mask: extrapolate at land boundaries (up to 1 cell)
+
+    # Open boundary condition for NaN values:
+    # Fill NaN derivatives with immediate neighbor
+    left_neighbor = jnp.roll(mid, 1, axis=-1).at[..., 0].set(jnp.nan)
+    right_neighbor = jnp.roll(mid, -1, axis=-1).at[..., -1].set(jnp.nan)
+
     mid = jnp.where(
-        jnp.isnan(mid),
-        jnp.pad(mid[:, 1:], pad_width=((0, 0), (0, 1)), mode="edge"),
-        mid
-    )
-    mid = jnp.where(
-        jnp.isnan(mid),
-        jnp.pad(mid[:, :-1], pad_width=((0, 0), (1, 0)), mode="edge"),
-        mid
+        ~jnp.isnan(mid),
+        mid,
+        jnp.where(~jnp.isnan(left_neighbor), left_neighbor,
+                  jnp.where(~jnp.isnan(right_neighbor), right_neighbor, jnp.nan))
     )
 
-    # extrapolate at the domain boundary
+    # Open boundary condition at domain edges: ∂²f/∂x² = 0
+    # The boundary derivative equals the nearest interior derivative
     mid = lax.cond(
         padding == "left",
-        lambda: jnp.pad(mid, pad_width=((0, 0), (1, 0)), mode="edge"),
-        lambda: jnp.pad(mid, pad_width=((0, 0), (0, 1)), mode="edge" )
+        lambda: jnp.concatenate([mid[..., 0:1], mid], axis=-1),
+        lambda: jnp.concatenate([mid, mid[..., -1:]], axis=-1)
     )
 
     mid = jnp.moveaxis(mid, -1, axis)
 
-    mid = jnp.where(mask, jnp.nan, mid)
+    mid = jnp.where(land_mask, jnp.nan, mid)
 
     return mid / dxy
 

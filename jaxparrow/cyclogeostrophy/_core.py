@@ -1,5 +1,3 @@
-"""Core utilities, types, and internal functions for cyclogeostrophy computations."""
-
 from typing import NamedTuple
 
 import jax
@@ -228,6 +226,7 @@ def assemble_result(
     CyclogeostrophyResult
         Named tuple with computed velocities and optional fields
     """
+    # Handle masked data (set land cells to NaN)
     ucg_u = sanitize.sanitize_data(ucg_u, jnp.nan, setup.is_land)
     vcg_v = sanitize.sanitize_data(vcg_v, jnp.nan, setup.is_land)
 
