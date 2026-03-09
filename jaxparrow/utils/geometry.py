@@ -18,7 +18,7 @@ P0 = jnp.pi / 180
 def compute_spatial_step(
     lat: Float[jax.Array, "lat lon"],
     lon: Float[jax.Array, "lat lon"]
-) -> [Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
+) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
     """
     Computes the spatial steps of a grid (in meters) along `x` and `y`.
 
@@ -122,7 +122,6 @@ def compute_grid_angle(
     """
     # Use central differences where possible, forward/backward at boundaries
     lat_rad = jnp.radians(lat)
-    lon_rad = jnp.radians(lon)
 
     # Compute differences in longitude (handling wraparound)
     dlon = jnp.zeros_like(lon)
@@ -164,7 +163,7 @@ def compute_grid_angle(
 def compute_uv_grids(
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"]
-) -> [
+) -> tuple[
     Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]
 ]:
     """
