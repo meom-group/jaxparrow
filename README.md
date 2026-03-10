@@ -50,7 +50,7 @@ vcg_2d = mb_result.vcg  # 2d jax.Array
 ```
 
 *Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).*
-We provide functions computing some kinematics (such as velocities magnitude, normalized relative vorticity, or kinematic energy) accounting for these gridding system:
+We provide functions computing some kinematics (such as velocities magnitude, normalized relative vorticity, or kinetic energy) accounting for these gridding system:
 
 ```python
 from jaxparrow.tools.kinematics import magnitude
