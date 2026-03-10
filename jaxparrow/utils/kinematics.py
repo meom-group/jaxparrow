@@ -125,7 +125,7 @@ def normalized_relative_vorticity(
 
     Returns
     -------
-    w : Float[jax.Array, "lat lon"]
+    nrv : Float[jax.Array, "lat lon"]
         The normalised relative vorticity,
         on the F grid (if ``interpolate=False``), or the T grid (if ``interpolate=True``)
     """
@@ -153,17 +153,17 @@ def normalized_relative_vorticity(
     du_dy_f = derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
     dv_dx_f = derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
     f_f = interpolation(f_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    w_f = (dv_dx_f - du_dy_f) / f_f  # F(j)
+    nrv_f = (dv_dx_f - du_dy_f) / f_f  # F(j)
 
     if nrv_on_t:
-        w_u = interpolation(w_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
-        w = interpolation(w_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
+        nrv_u = interpolation(nrv_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
+        nrv = interpolation(nrv_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
     else:
-        w = w_f
+        nrv = nrv_f
 
-    w = sanitize_data(w, jnp.nan, mask)
+    nrv = sanitize_data(nrv, jnp.nan, mask)
 
-    return w
+    return nrv
 
 
 def kinetic_energy(
@@ -195,7 +195,7 @@ def kinetic_energy(
 
     Returns
     -------
-    eke : Float[jax.Array, "lat lon"]
+    ke : Float[jax.Array, "lat lon"]
         The Kinetic Energy on the T grid
     """
     # Make sure the mask is initialized
@@ -208,6 +208,6 @@ def kinetic_energy(
     else:
         u_t, v_t = u, v
 
-    eke_t = (u_t ** 2 + v_t ** 2) / 2
+    ke_t = (u_t ** 2 + v_t ** 2) / 2
 
-    return eke_t
+    return ke_t

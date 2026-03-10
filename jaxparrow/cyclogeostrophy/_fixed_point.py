@@ -12,45 +12,53 @@ from ._core import (
 
 
 def fixed_point(
-    ssh_t: Float[jax.Array, "lat lon"],
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"],
+    ssh_t: Float[jax.Array, "lat lon"] = None,
+    ug_t: Float[jax.Array, "lat lon"] = None,
+    vg_t: Float[jax.Array, "lat lon"] = None,
     mask: Float[jax.Array, "lat lon"] = None,
-    n_it: int = 20,
-    res_eps: float = 0.01,
     return_geos: bool = False,
     return_grids: bool = True,
-    return_losses: bool = False
+    return_losses: bool = False,
+    n_it: int = 20,
+    res_eps: float = 0.01
 ) -> CyclogeostrophyResult:
     """
-    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
+    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using the fixed-point method [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528).
 
     The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
+    There are two modes of operation:
+
+    1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
+       Geostrophic velocities will be computed from SSH.
+
+    2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
+       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
+       and will be interpolated to U/V grids internally.
+
     Parameters
     ----------
-    ssh_t : Float[jax.Array, "lat lon"]
-        SSH field (on the T grid)
     lat_t : Float[jax.Array, "lat lon"]
-        Latitude of the T grid
+        Latitude of the T grid.
     lon_t : Float[jax.Array, "lat lon"]
-        Longitude of the T grid
+        Longitude of the T grid.
+    ssh_t : Float[jax.Array, "lat lon"], optional
+        SSH field (on the T grid). Required if geostrophic velocities are not provided.
+    ug_t : Float[jax.Array, "lat lon"], optional
+        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
+        bypasses SSH-based computation. Will be interpolated to U grid.
+    vg_t : Float[jax.Array, "lat lon"], optional
+        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
+        bypasses SSH-based computation. Will be interpolated to V grid.
     mask : Float[jax.Array, "lat lon"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
-        If not provided, inferred from ``ssh_t`` `nan` values
-        
+        If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
+
         Defaults to `None`
-    n_it : int, optional
-        Maximum number of iterations.
-
-        Defaults to `20`
-    res_eps : float, optional
-        Residual tolerance of the iterative approach.
-        When residuals are smaller, the iterative approach considers local convergence to cyclogeostrophy.
-
-        Defaults to `0.01`
     return_geos : bool, optional
         If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
 
@@ -63,6 +71,15 @@ def fixed_point(
         If `True`, returns the losses (cyclogeostrophic imbalance) over iterations.
 
         Defaults to `False`
+    n_it : int, optional
+        Maximum number of iterations.
+
+        Defaults to `20`
+    res_eps : float, optional
+        Residual tolerance of the iterative approach.
+        When residuals are smaller, the iterative approach considers local convergence to cyclogeostrophy.
+
+        Defaults to `0.01`
 
     Returns
     -------
@@ -74,7 +91,9 @@ def fixed_point(
         - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
         - ``losses``: Cyclogeostrophic imbalance per iteration (if ``return_losses=True``)
     """
-    setup = setup_cyclogeostrophy(ssh_t, lat_t, lon_t, mask)
+    setup = setup_cyclogeostrophy(
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+    )
 
     ucg_u, vcg_v, losses = _fixed_point(
         setup.ug_u, setup.vg_v,

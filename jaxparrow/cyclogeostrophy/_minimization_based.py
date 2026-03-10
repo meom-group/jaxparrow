@@ -11,37 +11,66 @@ from ._core import CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result
 
 
 def minimization_based(
-    ssh_t: Float[jax.Array, "lat lon"],
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"],
+    ssh_t: Float[jax.Array, "lat lon"] = None,
+    ug_t: Float[jax.Array, "lat lon"] = None,
+    vg_t: Float[jax.Array, "lat lon"] = None,
     mask: Float[jax.Array, "lat lon"] = None,
-    n_it: int = 2000,
-    optim: optax.GradientTransformation | str = "sgd",
-    optim_kwargs: dict = None,
     return_geos: bool = False,
     return_grids: bool = True,
-    return_losses: bool = False
+    return_losses: bool = False,
+    n_it: int = 2000,
+    optim: optax.GradientTransformation | str = "sgd",
+    optim_kwargs: dict = None
 ) -> CyclogeostrophyResult:
     """
-    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
+    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using our minimization-based method.
 
     The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
+    There are two modes of operation:
+
+    1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
+       Geostrophic velocities will be computed from SSH.
+
+    2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
+       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
+       and will be interpolated to U/V grids internally.
+
     Parameters
     ----------
-    ssh_t : Float[jax.Array, "lat lon"]
-        SSH field (on the T grid)
     lat_t : Float[jax.Array, "lat lon"]
-        Latitude of the T grid
+        Latitude of the T grid.
     lon_t : Float[jax.Array, "lat lon"]
-        Longitude of the T grid
+        Longitude of the T grid.
+    ssh_t : Float[jax.Array, "lat lon"], optional
+        SSH field (on the T grid). Required if geostrophic velocities are not provided.
+    ug_t : Float[jax.Array, "lat lon"], optional
+        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
+        bypasses SSH-based computation. Will be interpolated to U grid.
+    vg_t : Float[jax.Array, "lat lon"], optional
+        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
+        bypasses SSH-based computation. Will be interpolated to V grid.
     mask : Float[jax.Array, "lat lon"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
-        If not provided, inferred from ``ssh_t`` `nan` values
+        If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
 
         Defaults to `None`
+    return_geos : bool, optional
+        If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
+
+        Defaults to `False`
+    return_grids : bool, optional
+        If `True`, returns the U and V grids.
+
+        Defaults to `True`
+    return_losses : bool, optional
+        If `True`, returns the losses (cyclogeostrophic imbalance) over iterations.
+
+        Defaults to `False`
     n_it : int, optional
         Maximum number of iterations.
 
@@ -57,18 +86,6 @@ def minimization_based(
         If `None`, only the learning rate is enforced to `0.005`
 
         Defaults to `None`
-    return_geos : bool, optional
-        If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
-
-        Defaults to `False`
-    return_grids : bool, optional
-        If `True`, returns the U and V grids.
-
-        Defaults to `True`
-    return_losses : bool, optional
-        If `True`, returns the losses (cyclogeostrophic imbalance) over iterations.
-
-        Defaults to `False`
 
     Returns
     -------
@@ -79,9 +96,10 @@ def minimization_based(
         - ``ug``, ``vg``: Geostrophic velocities (if ``return_geos=True``)
         - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
         - ``losses``: Cyclogeostrophic imbalance per iteration (if ``return_losses=True``)
-        - ``ssh``: Regularized SSH field (if ``return_ssh=True``)
     """
-    setup = setup_cyclogeostrophy(ssh_t, lat_t, lon_t, mask)
+    setup = setup_cyclogeostrophy(
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+    )
 
     if isinstance(optim, str):
         if optim_kwargs is None:
