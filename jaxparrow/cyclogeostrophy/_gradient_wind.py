@@ -9,31 +9,48 @@ from ..utils import kinematics, operators
 
 
 def gradient_wind(
-    ssh_t: Float[jax.Array, "lat lon"],
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"],
+    ssh_t: Float[jax.Array, "lat lon"] = None,
+    ug_t: Float[jax.Array, "lat lon"] = None,
+    vg_t: Float[jax.Array, "lat lon"] = None,
     mask: Float[jax.Array, "lat lon"] = None,
     return_geos: bool = False,
     return_grids: bool = True
 ) -> CyclogeostrophyResult:
     """
-    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
+    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using the gradient wind approximation.
 
     The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
+    There are two modes of operation:
+
+    1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
+       Geostrophic velocities will be computed from SSH.
+
+    2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
+       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
+       and will be interpolated to U/V grids internally.
+
     Parameters
     ----------
-    ssh_t : Float[jax.Array, "lat lon"]
-        SSH field (on the T grid)
     lat_t : Float[jax.Array, "lat lon"]
-        Latitude of the T grid
+        Latitude of the T grid.
     lon_t : Float[jax.Array, "lat lon"]
-        Longitude of the T grid
+        Longitude of the T grid.
+    ssh_t : Float[jax.Array, "lat lon"], optional
+        SSH field (on the T grid). Required if geostrophic velocities are not provided.
+    ug_t : Float[jax.Array, "lat lon"], optional
+        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
+        bypasses SSH-based computation. Will be interpolated to U grid.
+    vg_t : Float[jax.Array, "lat lon"], optional
+        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
+        bypasses SSH-based computation. Will be interpolated to V grid.
     mask : Float[jax.Array, "lat lon"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
-        If not provided, inferred from ``ssh_t`` `nan` values
+        If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
 
         Defaults to `None`
     return_geos : bool, optional
@@ -54,7 +71,9 @@ def gradient_wind(
         - ``ug``, ``vg``: Geostrophic velocities (if ``return_geos=True``)
         - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
     """
-    setup = setup_cyclogeostrophy(ssh_t, lat_t, lon_t, mask)
+    setup = setup_cyclogeostrophy(
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+    )
 
     ucg_u, vcg_v = _gradient_wind(
         setup.ug_u, setup.vg_v,

@@ -119,9 +119,11 @@ class CyclogeostrophyResult(NamedTuple):
 # =============================================================================
 
 def setup_cyclogeostrophy(
-    ssh_t: Float[jax.Array, "lat lon"],
     lat_t: Float[jax.Array, "lat lon"],
     lon_t: Float[jax.Array, "lat lon"],
+    ssh_t: Float[jax.Array, "lat lon"] = None,
+    ug_t: Float[jax.Array, "lat lon"] = None,
+    vg_t: Float[jax.Array, "lat lon"] = None,
     mask: Float[jax.Array, "lat lon"] = None
 ) -> CyclogeostrophySetup:
     """
@@ -130,34 +132,68 @@ def setup_cyclogeostrophy(
     This includes: land mask, geostrophic velocities, U/V grids, spatial steps,
     Coriolis factors, and grid rotation angles on all grids.
 
+    There are two modes of operation:
+
+    1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
+       Geostrophic velocities will be computed from SSH.
+
+    2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
+       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
+       and will be interpolated to U/V grids internally.
+
     Parameters
     ----------
-    ssh_t : Float[jax.Array, "lat lon"]
-        SSH field on T grid
     lat_t : Float[jax.Array, "lat lon"]
-        Latitudes of T grid
+        Latitudes of T grid.
     lon_t : Float[jax.Array, "lat lon"]
-        Longitudes of T grid
+        Longitudes of T grid.
+    ssh_t : Float[jax.Array, "lat lon"], optional
+        SSH field on T grid. Required if geostrophic velocities are not provided.
+    ug_t : Float[jax.Array, "lat lon"], optional
+        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
+        bypasses SSH-based computation. Will be interpolated to U grid.
+    vg_t : Float[jax.Array, "lat lon"], optional
+        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
+        bypasses SSH-based computation. Will be interpolated to V grid.
     mask : Float[jax.Array, "lat lon"], optional
-        Land mask where `1`/`True` is land. If None, inferred from ssh_t nan values.
+        Land mask where `1`/`True` is land. If None, inferred from ssh_t or ug_t nan values.
 
     Returns
     -------
     CyclogeostrophySetup
         Named tuple containing all precomputed values
+
+    Raises
+    ------
+    ValueError
+        If neither SSH nor geostrophic velocity inputs are provided.
     """
-    is_land = sanitize.init_land_mask(ssh_t, mask)
+    # Check if geostrophic velocities are provided directly
+    use_geos_directly = ug_t is not None and vg_t is not None
 
-    geos_results = geostrophy(
-        ssh_t, lat_t, lon_t, is_land, return_grids=True
-    )
+    if use_geos_directly:
+        is_land = sanitize.init_land_mask(ug_t, mask)
+        # Interpolate ug_t, vg_t from T grid to U/V grids
+        ug_u = operators.interpolation(ug_t, is_land, axis=1, padding="right")
+        vg_v = operators.interpolation(vg_t, is_land, axis=0, padding="right")
+    else:
+        # Traditional SSH-based computation
+        if ssh_t is None:
+            raise ValueError(
+                "Either provide ssh_t to compute geostrophic velocities from SSH, "
+                "or provide ug_t, vg_t directly on the T grid."
+            )
+        is_land = sanitize.init_land_mask(ssh_t, mask)
 
-    ug_u = geos_results.ug
-    vg_v = geos_results.vg
-    lat_u = geos_results.lat_u
-    lon_u = geos_results.lon_u
-    lat_v = geos_results.lat_v
-    lon_v = geos_results.lon_v
+        geos_results = geostrophy(
+            ssh_t, lat_t, lon_t, is_land, return_grids=True
+        )
+
+        ug_u = geos_results.ug
+        vg_v = geos_results.vg
+
+    # Compute U/V grids from T grid
+    lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
 
     dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
     dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)

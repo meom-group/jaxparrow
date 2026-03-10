@@ -33,20 +33,28 @@ Estimating the cyclogeostrophic currents from a given Sea Surface Height field c
 - [`gradient_wind`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.gradient_wind),
 - [`fixed_point`](https://jaxparrow.readthedocs.io/en/latest/api/#jaxparrow.cyclogeostrophy.fixed_point).
 
-They all need at least:
+Taking as inputs:
 
 - a SSH field (a `2d jax.Array`),
 - the latitude and longitude grids at the T points (two `2d jax.Array`).
 
-In a Python script, assuming that the input grids have already been initialised / imported, estimating the cyclogeostrophic currents for a single timestamp would resort to:
+They return a result objects holding the cyclogeostrophic velocity $u$ and $v$ components.
+
+In a Python script estimating the cyclogeostrophic currents for a single timestamp would resort to:
 
 ```python
-from jaxparrow import minimization_based
+from jaxparrow import minimization_based  # or gradient_wind or fixed_point
 
-mb_result = minimization_based(ssh_2d, lat_2d, lon_2d)
+mb_result = minimization_based(lat_t=lat_2d, lon_t=lon_2d, ssh_t=ssh_2d)
 
 ucg_2d = mb_result.ucg  # 2d jax.Array
 vcg_2d = mb_result.vcg  # 2d jax.Array
+```
+
+Note that it is also possible to directly pass as inputs the geostrophic velocity $u$ and $v$ components, rather than the SSH:
+
+```python
+mb_result = minimization_based(lat_t=lat_2d, lon_t=lon_2d, ug_t=ug_2d, vg_t=vg_2d)
 ```
 
 *Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).*
