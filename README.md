@@ -57,22 +57,13 @@ Note that it is also possible to directly pass as inputs the geostrophic velocit
 mb_result = minimization_based(lat_t=lat_2d, lon_t=lon_2d, ug_t=ug_2d, vg_t=vg_2d)
 ```
 
-*Because `jaxparrow` uses [C-grids](https://xgcm.readthedocs.io/en/latest/grids.html) the velocity fields are represented on two grids (U and V), and the tracer fields (such as SSH) on one grid (T).*
-We provide functions computing some kinematics (such as velocities magnitude, normalized relative vorticity, or kinetic energy) accounting for these gridding system:
-
-```python
-from jaxparrow.tools.kinematics import magnitude
-
-uv_cg = magnitude(ucg, vcg)
-```
-
 To vectorise the estimation of the cyclogeostrophy along a first time dimension, one aims to use `jax.vmap`.
 
 ```python
 import jax
 
-vmap_cyclogeostrophy = jax.vmap(cyclogeostrophy, in_axes=(0, None, None))
-mb_result = vmap_cyclogeostrophy(ssh_3d, lat_2d, lon_2d)
+vmap_cyclogeostrophy = jax.vmap(lambda _ssh_2d: cyclogeostrophy(lat_t=lat_2d, lon_t=lon_2d, ssh_t=_ssh_2d))
+mb_result = vmap_cyclogeostrophy(ssh_3d)
 
 ucg_3d = mb_result.ucg  # 3d jax.Array
 vcg_3d = mb_result.vcg  # 3d jax.Array

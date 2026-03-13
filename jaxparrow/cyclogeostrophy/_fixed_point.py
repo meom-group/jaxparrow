@@ -6,20 +6,18 @@ import jax.numpy as jnp
 from jaxtyping import Bool, Float
 
 from ._core import (
-    CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result,
-    _advection, _cyclogeostrophic_loss
+    CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result, _advection, _cyclogeostrophic_loss
 )
 
 
 def fixed_point(
-    lat_t: Float[jax.Array, "lat lon"],
-    lon_t: Float[jax.Array, "lat lon"],
-    ssh_t: Float[jax.Array, "lat lon"] = None,
-    ug_t: Float[jax.Array, "lat lon"] = None,
-    vg_t: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
+    lat_t: Float[jax.Array, "y x"],
+    lon_t: Float[jax.Array, "y x"],
+    ssh_t: Float[jax.Array, "y x"] = None,
+    ug_t: Float[jax.Array, "y x"] = None,
+    vg_t: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
     return_geos: bool = False,
-    return_grids: bool = True,
     return_losses: bool = False,
     n_it: int = 20,
     res_eps: float = 0.01
@@ -28,32 +26,33 @@ def fixed_point(
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using the fixed-point method [Penven et al. (2014)](https://doi.org/10.1002/2013JC009528).
 
-    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
-
     There are two modes of operation:
 
     1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
        Geostrophic velocities will be computed from SSH.
 
     2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
-       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
-       and will be interpolated to U/V grids internally.
+       (and optionally ``land_mask``). Geostrophic velocities are provided on the T grid.
 
     Parameters
     ----------
-    lat_t : Float[jax.Array, "lat lon"]
-        Latitude of the T grid.
-    lon_t : Float[jax.Array, "lat lon"]
-        Longitude of the T grid.
-    ssh_t : Float[jax.Array, "lat lon"], optional
-        SSH field (on the T grid). Required if geostrophic velocities are not provided.
-    ug_t : Float[jax.Array, "lat lon"], optional
-        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
-        bypasses SSH-based computation. Will be interpolated to U grid.
-    vg_t : Float[jax.Array, "lat lon"], optional
-        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
-        bypasses SSH-based computation. Will be interpolated to V grid.
-    mask : Float[jax.Array, "lat lon"], optional
+    lat_t : Float[jax.Array, "y x"]
+        Latitude of the T grid
+    lon_t : Float[jax.Array, "y x"]
+        Longitude of the T grid
+    ssh_t : Float[jax.Array, "y x"], optional
+        SSH field (on the T grid)
+
+        Defaults to `None`, required if geostrophic velocities are not provided
+    ug_t : Float[jax.Array, "y x"], optional
+        U component of geostrophic velocity on T grid
+        
+        Defaults to `None`, required if ``ssh_t`` is not provided
+    vg_t : Float[jax.Array, "y x"], optional
+        V component of geostrophic velocity on T grid
+        
+        Defaults to `None`, required if ``ssh_t`` is not provided
+    land_mask : Float[jax.Array, "y x"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
@@ -63,10 +62,6 @@ def fixed_point(
         If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
 
         Defaults to `False`
-    return_grids : bool, optional
-        If `True`, returns the U and V grids.
-
-        Defaults to `True`
     return_losses : bool, optional
         If `True`, returns the losses (cyclogeostrophic imbalance) over iterations.
 
@@ -85,58 +80,49 @@ def fixed_point(
     -------
     CyclogeostrophyResult
         Named tuple containing:
-        - ``ucg``: U component of cyclogeostrophic velocity (on U grid)
-        - ``vcg``: V component of cyclogeostrophic velocity (on V grid)
+        - ``ucg``: $u$ component of cyclogeostrophic velocity, on the T grid
+        - ``vcg``: $v$ component of cyclogeostrophic velocity, on the T grid
         - ``ug``, ``vg``: Geostrophic velocities (if ``return_geos=True``)
-        - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
         - ``losses``: Cyclogeostrophic imbalance per iteration (if ``return_losses=True``)
     """
     setup = setup_cyclogeostrophy(
-        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, land_mask=land_mask
     )
 
-    ucg_u, vcg_v, losses = _fixed_point(
-        setup.ug_u, setup.vg_v,
-        setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
-        setup.coriolis_factor_u, setup.coriolis_factor_v,
-        setup.grid_angle_u, setup.grid_angle_v,
-        setup.is_land, n_it, res_eps, return_losses
+    ucg, vcg, losses = _fixed_point(
+        setup.ug_t, setup.vg_t,
+        setup.dx_e_t, setup.dx_n_t, setup.dy_e_t, setup.dy_n_t, setup.J_t,
+        setup.coriolis_factor_t,
+        setup.land_mask, n_it, res_eps, return_losses
     )
 
     return assemble_result(
-        ucg_u, vcg_v, setup,
-        return_geos=return_geos,
-        return_grids=return_grids,
-        return_losses=return_losses,
-        losses=losses
+        ucg, vcg, setup, return_geos=return_geos, return_losses=return_losses, losses=losses
     )
 
 
 @partial(jax.jit, static_argnames=("n_it"))
 def _fixed_point(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"],
-    grid_angle_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
     n_it: int,
     res_eps: float,
     return_losses: bool
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "n_it"]]:
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"], Float[jax.Array, "n_it"]]:
     # define step partial: freeze constant over iterations
     def step_fn(carry, _):
         return _fp_step(
-            ug_u, vg_v,
-            dx_u, dx_v, dy_u, dy_v,
-            coriolis_factor_u, coriolis_factor_v,
-            grid_angle_u, grid_angle_v,
-            mask,
+            ug_t, vg_t,
+            dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t,
+            coriolis_factor_t,
+            land_mask,
             res_eps, return_losses,
             *carry
         )
@@ -144,7 +130,7 @@ def _fixed_point(
     # apply updates
     (ucg, vcg, _, _), losses = lax.scan(
         step_fn,
-        (ug_u, vg_v, (1 - mask).astype(bool), jnp.maximum(jnp.abs(ug_u), jnp.abs(vg_v))),
+        (ug_t, vg_t, (1 - land_mask).astype(bool), jnp.maximum(jnp.abs(ug_t), jnp.abs(vg_t))),
         xs=None, length=n_it
     )
 
@@ -152,46 +138,38 @@ def _fixed_point(
 
 
 def _fp_step(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"],
-    grid_angle_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
     res_eps: float,
     return_losses: bool,
-    u_n: Float[jax.Array, "lat lon"],
-    v_n: Float[jax.Array, "lat lon"],
-    mask_update: Bool[jax.Array, "lat lon"],
-    res_n: Float[jax.Array, "lat lon"]
+    u_n: Float[jax.Array, "y x"],
+    v_n: Float[jax.Array, "y x"],
+    mask_update: Bool[jax.Array, "y x"],
+    res_n: Float[jax.Array, "y x"]
 ) -> tuple[
-    tuple[
-        Float[jax.Array, "lat lon"], 
-        Float[jax.Array, "lat lon"], 
-        Float[jax.Array, "lat lon"], 
-        Float[jax.Array, "lat lon"]
-    ], 
+    tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"], Float[jax.Array, "y x"], Float[jax.Array, "y x"]], 
     float
 ]:
     # compute loss
     loss = lax.cond(
         return_losses,
         lambda: _cyclogeostrophic_loss(
-            ug_u, vg_v, u_n, v_n, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask,
-            grid_angle_u, grid_angle_v
+            ug_t, vg_t, u_n, v_n, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, coriolis_factor_t, land_mask
         ),
         lambda: jnp.nan
     )
 
     # next it
-    u_adv_v, v_adv_u = _advection(u_n, v_n, dx_u, dx_v, dy_u, dy_v, mask, grid_angle_u, grid_angle_v)
-    u_np1 = ug_u - jnp.nan_to_num(v_adv_u / coriolis_factor_u, copy=False, nan=0, posinf=0, neginf=0)
-    v_np1 = vg_v + jnp.nan_to_num(u_adv_v / coriolis_factor_v, copy=False, nan=0, posinf=0, neginf=0)
+    u_adv, v_adv = _advection(u_n, v_n, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, land_mask)
+    u_np1 = ug_t - jnp.nan_to_num(v_adv / coriolis_factor_t, copy=False, nan=0, posinf=0, neginf=0)
+    v_np1 = vg_t + jnp.nan_to_num(u_adv / coriolis_factor_t, copy=False, nan=0, posinf=0, neginf=0)
 
     # compute dist to ucg and vcg
     res_np1 = jnp.abs(u_np1 - u_n) + jnp.abs(v_np1 - v_n)  # norm1

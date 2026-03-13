@@ -7,11 +7,11 @@ from jaxtyping import Float
 
 
 def interpolation(
-    field: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
+    field: Float[jax.Array, "y x"],
     axis: Literal[0, 1],
-    padding: Literal["left", "right"]
-) -> Float[jax.Array, "lat lon"]:
+    padding: Literal["left", "right"],
+    land_mask: Float[jax.Array, "y x"] = None,
+) -> Float[jax.Array, "y x"]:
     """
     Interpolates the values of a ``field`` along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/`x`),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
@@ -25,10 +25,8 @@ def interpolation(
 
     Parameters
     ----------
-    field : Float[jax.Array, "lat lon"]
+    field : Float[jax.Array, "y x"]
         Field to interpolate
-    mask : Float[jax.Array, "lat lon"]
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
     axis : Literal[0, 1]
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
@@ -38,10 +36,16 @@ def interpolation(
         (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
         and interpolating from T to U points a `right` padding
         (the midpoint between $T_i$ and $T_{i+1}$ corresponds to $U_i$)
+    land_mask : Float[jax.Array, "y x"], optional
+        Mask indicating the land domain where extrapolation should be applied.
+        `False`/`0` indicates ocean cells, `True`/`1` indicates land cells.
+
+        Defaults to `None`, 
+        in which case no land masking is applied and extrapolation is performed across the entire domain
 
     Returns
     -------
-    field : Float[jax.Array, "lat lon"]
+    field : Float[jax.Array, "y x"]
         Interpolated field
     """
     f = jnp.moveaxis(field, axis, -1)
@@ -65,24 +69,24 @@ def interpolation(
     # Pad at the domain boundary with edge value (open boundary condition)
     mid = lax.cond(
         padding == "left",
-        lambda: jnp.concatenate([mid[:, 0:1], mid], axis=-1),
-        lambda: jnp.concatenate([mid, mid[:, -1:]], axis=-1)
+        lambda: jnp.pad(mid, ((0, 0), (1, 0)), mode='edge'),
+        lambda: jnp.pad(mid, ((0, 0), (0, 1)), mode='edge')
     )
 
     mid = jnp.moveaxis(mid, -1, axis)
 
-    mid = jnp.where(mask, jnp.nan, mid)
+    if land_mask is not None:
+        mid = jnp.where(land_mask, jnp.nan, mid)
 
     return mid
 
 
 def derivative(
-    field: Float[jax.Array, "lat lon"],
-    dxy: Float[jax.Array, "lat lon"],
-    land_mask: Float[jax.Array, "lat lon"],
+    field: Float[jax.Array, "y x"],
     axis: Literal[0, 1],
-    padding: Literal["left", "right"]
-) -> Float[jax.Array, "lat lon"]:
+    padding: Literal["left", "right"],
+    land_mask: Float[jax.Array, "y x"] = None,
+) -> Float[jax.Array, "y x"]:
     """
     Differentiates a ``field``, using finite differences, along a given ``axis`` (`0` for `lat`/`y`, `1` for `lon`/'x'),
     applying ``padding`` to the `left` (i.e. `West` if ``axis=1``, `South` if ``axis=0``) or
@@ -99,13 +103,8 @@ def derivative(
 
     Parameters
     ----------
-    field : Float[jax.Array, "lat lon"]
+    field : Float[jax.Array, "y x"]
         Field to differentiate
-    dxy : Float[jax.Array, "lat lon"]
-        Spatial steps
-    land_mask : Float[jax.Array, "lat lon"]
-        Mask indicating the land domain where extrapolation should be applied.
-        `False`/`0` indicates ocean cells, `True`/`1` indicates land cells.
     axis : Literal[0, 1]
         Axis along which interpolation is performed
     padding : Literal["left", "right"]
@@ -115,91 +114,131 @@ def derivative(
         (the midpoint between $U_i$ and $U_{i+1}$ corresponds to $T_{i+1}$),
         and interpolating from T to U points a `right` padding
         (the midpoint between $T_i$ and $T_{i+1}$ corresponds to $U_i$)
+    land_mask : Float[jax.Array, "y x"], optional
+        Mask indicating the land domain where extrapolation should be applied.
+        `False`/`0` indicates ocean cells, `True`/`1` indicates land cells.
+
+        Defaults to `None`, 
+        in which case no land masking is applied and extrapolation is performed across the entire domain
 
     Returns
     -------
-    field : Float[jax.Array, "lat lon"]
+    df : Float[jax.Array, "y x"]
         Differentiated field
     """
     f = jnp.moveaxis(field, axis, -1)
 
-    mid = jnp.diff(f, axis=-1)
+    df = jnp.diff(f, axis=-1)
 
     # Open boundary condition for NaN values:
     # Fill NaN derivatives with immediate neighbor
-    left_neighbor = jnp.roll(mid, 1, axis=-1).at[..., 0].set(jnp.nan)
-    right_neighbor = jnp.roll(mid, -1, axis=-1).at[..., -1].set(jnp.nan)
+    left_neighbor = jnp.roll(df, 1, axis=-1).at[..., 0].set(jnp.nan)
+    right_neighbor = jnp.roll(df, -1, axis=-1).at[..., -1].set(jnp.nan)
 
-    mid = jnp.where(
-        ~jnp.isnan(mid),
-        mid,
-        jnp.where(~jnp.isnan(left_neighbor), left_neighbor,
-                  jnp.where(~jnp.isnan(right_neighbor), right_neighbor, jnp.nan))
+    df = jnp.where(
+        ~jnp.isnan(df),
+        df,
+        jnp.where(
+            ~jnp.isnan(left_neighbor), left_neighbor,
+            jnp.where(~jnp.isnan(right_neighbor), right_neighbor, jnp.nan)
+        )
     )
 
     # Open boundary condition at domain edges: ∂²f/∂x² = 0
     # The boundary derivative equals the nearest interior derivative
-    mid = lax.cond(
+    df = lax.cond(
         padding == "left",
-        lambda: jnp.concatenate([mid[..., 0:1], mid], axis=-1),
-        lambda: jnp.concatenate([mid, mid[..., -1:]], axis=-1)
+        lambda: jnp.concatenate([df[..., 0:1], df], axis=-1),
+        lambda: jnp.concatenate([df, df[..., -1:]], axis=-1)
     )
 
-    mid = jnp.moveaxis(mid, -1, axis)
+    df = jnp.moveaxis(df, -1, axis)
 
-    mid = jnp.where(land_mask, jnp.nan, mid)
+    if land_mask is not None:
+        df = jnp.where(land_mask, jnp.nan, df)
 
-    return mid / dxy
+    return df
 
 
-def rotate_to_geographic(
-    grad_i: Float[jax.Array, "lat lon"],
-    grad_j: Float[jax.Array, "lat lon"],
-    grid_angle: Float[jax.Array, "lat lon"]
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
+def horizontal_derivatives(
+    field: Float[jax.Array, "y x"],
+    lat: Float[jax.Array, "y x"] = None,
+    lon: Float[jax.Array, "y x"] = None,
+    dx_e: Float[jax.Array, "y x"] = None,
+    dx_n: Float[jax.Array, "y x"] = None,
+    dy_e: Float[jax.Array, "y x"] = None,
+    dy_n: Float[jax.Array, "y x"] = None,
+    J: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"]]:
     """
-    Rotates gradients from grid coordinates to geographic coordinates.
+    Computes the horizontal derivatives of a ``field`` defined on a curvilinear or rectilinear grid, 
+    using finite differences and applying an open boundary condition at domain edges and land/NaN boundaries.
 
-    For curvilinear grids (e.g., SWOT swaths, tripolar grids), the grid axes are not aligned
-    with geographic east-west/north-south directions. This function rotates gradient components
-    from grid (i, j) coordinates to geographic (x=east, y=north) coordinates.
+    Horizontal derivatives are returned in the same grid as the input field.
 
     Parameters
     ----------
-    grad_i : Float[jax.Array, "lat lon"]
-        Gradient component along the grid i-axis (axis=1)
-    grad_j : Float[jax.Array, "lat lon"]
-        Gradient component along the grid j-axis (axis=0)
-    grid_angle : Float[jax.Array, "lat lon"]
-        Angle in radians from geographic east to the grid i-direction (counterclockwise positive).
-        Can be computed using :func:`geometry.compute_grid_angle`.
+    field : Float[jax.Array, "y x"]
+        Field for which to compute gradients
+    lat : Float[jax.Array, "y x"], optional
+        Latitude grid corresponding to the field
 
+        Defaults to `None`, in which case ``dx_e``, ``dx_n``, ``dy_e``, ``dy_n`` and ``J`` must be provided
+    lon : Float[jax.Array, "y x"], optional
+        Longitude grid corresponding to the field
+
+        Defaults to `None`, in which case ``dx_e``, ``dx_n``, ``dy_e``, ``dy_n`` and ``J`` must be provided
+    dx_e : Float[jax.Array, "y x"], optional
+        Grid spacing in the eastward direction (i.e. along axis=1)
+
+        Defaults to `None`, in which case ``lat`` and ``lon`` must be provided
+    dx_n : Float[jax.Array, "y x"], optional
+        Grid spacing in the northward direction (i.e. along axis=0)
+
+        Defaults to `None`, in which case ``lat`` and ``lon`` must be provided
+    dy_e : Float[jax.Array, "y x"], optional
+        Grid spacing in the eastward direction (i.e. along axis=1)
+
+        Defaults to `None`, in which case ``lat`` and ``lon`` must be provided
+    dy_n : Float[jax.Array, "y x"], optional
+        Grid spacing in the northward direction (i.e. along axis=0)
+
+        Defaults to `None`, in which case ``lat`` and ``lon`` must be provided
+    J : Float[jax.Array, "y x"], optional
+        Jacobian of the transformation from grid to geographic coordinates
+
+        Defaults to `None`, in which case ``lat`` and ``lon`` must be provided
+    land_mask : Float[jax.Array, "y x"], optional
+        Mask indicating the land domain where extrapolation should be applied.
+        `False`/`0` indicates ocean cells, `True`/`1` indicates land cells.
+
+        Defaults to `None`, 
+        in which case no land masking is applied and extrapolation is performed across the entire domain
+    
     Returns
     -------
-    grad_x : Float[jax.Array, "lat lon"]
-        Gradient in the geographic x (eastward) direction
-    grad_y : Float[jax.Array, "lat lon"]
-        Gradient in the geographic y (northward) direction
-
-    Notes
-    -----
-    The rotation from grid coordinates (i, j) to geographic coordinates (x, y) assumes
-    the grid is locally orthogonal (j-axis at angle θ + π/2 from east):
-
-    .. math::
-
-        \\frac{\\partial f}{\\partial x} = \\cos(\\theta) \\frac{\\partial f}{\\partial s_i} 
-        - \\sin(\\theta) \\frac{\\partial f}{\\partial s_j}
-
-        \\frac{\\partial f}{\\partial y} = \\sin(\\theta) \\frac{\\partial f}{\\partial s_i} 
-        + \\cos(\\theta) \\frac{\\partial f}{\\partial s_j}
-
-    where θ is the angle from geographic east to the grid i-axis.
+    df_e : Float[jax.Array, "y x"]
+        Eastward derivative of the field, on the same grid as the input field
+    df_n : Float[jax.Array, "y x"]
+        Northward derivative of the field, on the same grid as the input field
     """
-    cos_theta = jnp.cos(grid_angle)
-    sin_theta = jnp.sin(grid_angle)
+    if dx_e is None or dx_n is None or dy_e is None or dy_n is None or J is None:
+        if lat is None or lon is None:
+            raise ValueError("Either lat/lon or dx_e/dx_n/dy_e/dy_n/J must be provided")
+        from .geometry import grid_metrics
+        dx_e, dx_n, dy_e, dy_n, J = grid_metrics(lat, lon)
 
-    grad_x = cos_theta * grad_i - sin_theta * grad_j
-    grad_y = sin_theta * grad_i + cos_theta * grad_j
+    # compute derivatives in grid coordinates
+    df_x_s1 = derivative(field, axis=1, padding="right", land_mask=land_mask)
+    df_y_s0 = derivative(field, axis=0, padding="right", land_mask=land_mask)
 
-    return grad_x, grad_y
+    # because of staggered grid, we need to interpolate
+    df_x = interpolation(df_x_s1, axis=1, padding="left", land_mask=land_mask)
+    df_y = interpolation(df_y_s0, axis=0, padding="left", land_mask=land_mask)
+
+    # transform derivatives to geographic coordinates
+    df_e = (df_x * dy_n - df_y * dy_e) / J
+    df_n = (df_y * dx_e - df_x * dx_n) / J
+
+    return df_e, df_n
