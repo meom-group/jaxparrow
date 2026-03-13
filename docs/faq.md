@@ -4,7 +4,7 @@
 
 `Dask` is probably your best bet to handle large datasets that do not fit into (CPU or GPU) memory.
 
-On a CPU backend, one can use a chunk size of 1 along the time dimension and map the call to [`cyclogeostrophy`](api.md#jaxparrow.cyclogeostrophy.cyclogeostrophy) onto the dataset:
+On a CPU backend, one can use a chunk size of 1 along the time dimension and map the call to [`minimization_based`](api.md#jaxparrow.cyclogeostrophy.minimization_based) onto the dataset:
 
 ```python
 import dask
@@ -12,14 +12,20 @@ import jax.numpy as jnp
 import numpy as np
 import xarray as xr
 
-from jaxparrow.cyclogeostrophy import cyclogeostrophy
+from jaxparrow import minimization_based
 
 
 def do_one_block(in_block):
-    ucg, vcg, ug, vg = cyclogeostrophy(
-        jnp.asarray(in_block.ssh.values), jnp.asarray(in_block.lat.values), jnp.asarray(in_block.lon.values), 
-        return_geos=True, return_grids=False
+    mb_result = minimization_based(
+        lat_t=jnp.asarray(in_block.lat.values), lon_tjnp.asarray(in_block.lon.values), 
+        ssh_t=jnp.asarray(in_block.ssh.values), 
+        return_geos=True
     )
+
+    ucg = mb_result.ucg
+    vcg = mb_result.vcg
+    ug = mb_result.ug
+    vg = mb_result.vg
 
     out_block = xr.Dataset(
         {
@@ -70,15 +76,20 @@ from jaxparrow.cyclogeostrophy import cyclogeostrophy
 
 
 vmap_cyclogeostrophy = jax.vmap(
-    lambda *args: cyclogeostrophy(*args, return_geos=True, return_grids=False),
+    lambda ssh, lat, lon: minimization_based(lat_t=lat, lon_t=lon, ssh_t=ssh, return_geos=True),
     in_axes=(0, None, None)
 )
 
 
 def do_one_block_vmap(in_block: xr.Dataset):
-    ucg_3d, vcg_3d, ug_3d, vg_3d = vmap_cyclogeostrophy(
+    mb_result = vmap_cyclogeostrophy(
         jnp.asarray(in_block.ssh.values), jnp.asarray(in_block.lat.values), jnp.asarray(in_block.lon.values)
     )
+
+    ucg_3d = mb_result.uvg
+    vcg_3d = mb_result.vcg
+    ug_3d = mb_result.ug
+    vg_3d = mb_result.vg
 
     out_block = xr.Dataset(
         {
@@ -135,7 +146,7 @@ optimizer = optax.chain(
 )
 ```
 
-And then pass the `optimizer` object as the `optim` argument of the [`cyclogeostrophy`](api.md#jaxparrow.cyclogeostrophy.cyclogeostrophy) function.
+And then pass the `optimizer` object as the `optim` argument of the [`minimization_based`](api.md#jaxparrow.cyclogeostrophy.minimization_based) function.
 This is employed in the [Pseudo-SWOT observations from eNATL60 model data](examples/swot-enatl60.ipynb) example.
 
 We also recommend using `JAX` floating point types with sufficient precision, e.g., `float64`:

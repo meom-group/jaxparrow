@@ -386,10 +386,10 @@ def cyclogeostrophic_imbalance(
     
     # compute grid metrics once
     dx_e, dx_n, dy_e, dy_n, J = geometry.grid_metrics(lat_t, lon_t)
+    f = geometry.coriolis_factor(lat_t)
 
     return _cyclogeostrophic_imbalance(
-        ug_u, vg_v, ucg_u, vcg_v,
-        dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v, mask
+        ug, vg, ucg, vcg, dx_e, dx_n, dy_e, dy_n, J, f, land_mask
     )
 
 
