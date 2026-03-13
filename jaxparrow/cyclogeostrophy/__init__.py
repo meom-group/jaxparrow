@@ -3,7 +3,6 @@ from ._core import (
     CyclogeostrophySetup,
     cyclogeostrophic_loss,
     cyclogeostrophic_imbalance,
-    radius_of_curvature,
 )
 from ._fixed_point import fixed_point
 from ._gradient_wind import gradient_wind
@@ -15,7 +14,6 @@ __all__ = [
     "minimization_based",
     "cyclogeostrophic_loss",
     "cyclogeostrophic_imbalance",
-    "radius_of_curvature",
     "CyclogeostrophyResult",
     "CyclogeostrophySetup",
 ]

@@ -1,66 +1,54 @@
 import jax.numpy as jnp
-import optax
 
-from jaxparrow.cyclogeostrophy._fixed_point import _fixed_point
-from jaxparrow.cyclogeostrophy._minimization_based import _minimization_based
-from jaxparrow.geostrophy import _geostrophy
-from jaxparrow.utils.operators import interpolation
+from jaxparrow import fixed_point, geostrophy, gradient_wind, minimization_based
 
-import gaussian_eddy as ge
+import gaussian_eddy
 
 
 class TestVelocities:
-    _, _, _, dXY, coriolis_factor, ssh, ug, vg, ucg, vcg, mask = ge.simulate_gaussian_eddy(
-        50e3, 5e3, -.2, 36
-    )
-    grid_angle = jnp.zeros_like(ssh)
+    lat, lon, ssh, ug, vg, ucg, vcg, land_mask = gaussian_eddy.simulate_gaussian_eddy(R0=50e3, eta0=-.2)
 
     def test_geostrophy(self):
-        ug_est, vg_est = _geostrophy(self.ssh, self.dXY, self.dXY, self.coriolis_factor, self.grid_angle, self.mask)
-        ug_est_t = interpolation(ug_est, self.mask, axis=1, padding="left")
-        vg_est_t = interpolation(vg_est, self.mask, axis=0, padding="left")
-        geos_rmse = self.compute_rmse(self.ug, self.vg, ug_est_t, vg_est_t)  # around 0.002
-        assert geos_rmse < .003
+        ug_est, vg_est = geostrophy(ssh_t=self.ssh, lat_t=self.lat, lon_t=self.lon, land_mask=self.land_mask)
+        geos_rmse = self.compute_rmse(self.ug, self.vg, ug_est, vg_est)  # around 0.0004623004
+        print("Geos RMSE:", geos_rmse)
+        assert geos_rmse < .0005
 
-    def test_cyclogeostrophy_penven(self):
-        ug_est, vg_est = _geostrophy(self.ssh, self.dXY, self.dXY, self.coriolis_factor, self.grid_angle, self.mask)
-        ucg_est, vcg_est, _ = _fixed_point(ug_est, vg_est,
-                                                   self.dXY, self.dXY, self.dXY, self.dXY,
-                                                   self.coriolis_factor, self.coriolis_factor, 
-                                                   self.grid_angle, self.grid_angle, 
-                                                   self.mask,
-                                                   20, 0.01, False)
-        ucg_est_t = interpolation(ucg_est, self.mask, axis=1, padding="left")
-        vcg_est_t = interpolation(vcg_est, self.mask, axis=0, padding="left")
-        cyclo_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est_t, vcg_est_t)  # around .002
-        assert cyclo_rmse < .003
+    def test_cyclogeostrophy_fixed_point(self):
+        res_fp = fixed_point(
+            lat_t=self.lat, lon_t=self.lon, ug_t=self.ug, vg_t=self.vg, land_mask=self.land_mask
+        )
 
-    def test_cyclogeostrophy_ioannou(self):
-        ug_est, vg_est = _geostrophy(self.ssh, self.dXY, self.dXY, self.coriolis_factor, self.grid_angle, self.mask)
-        ucg_est, vcg_est, _ = _fixed_point(ug_est, vg_est,
-                                                   self.dXY, self.dXY, self.dXY, self.dXY,
-                                                   self.coriolis_factor, self.coriolis_factor, 
-                                                   self.grid_angle, self.grid_angle, 
-                                                   self.mask,
-                                                   20, 0.01, False)
-        ucg_est_t = interpolation(ucg_est, self.mask, axis=1, padding="left")
-        vcg_est_t = interpolation(vcg_est, self.mask, axis=0, padding="left")
-        cyclo_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est_t, vcg_est_t)  # around .002
-        assert cyclo_rmse < .003
+        ucg_est, vcg_est = res_fp.ucg, res_fp.vcg
+        fp_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est, vcg_est)  # around 0.00035087694
+        print("FP RMSE:", fp_rmse)
+
+        assert fp_rmse < .0004
+
+    def test_cyclogeostrophy_gradient_wind(self):
+        res_gw = gradient_wind(
+            lat_t=self.lat, lon_t=self.lon, ug_t=self.ug, vg_t=self.vg, land_mask=self.land_mask
+        )
+
+        ucg_est, vcg_est = res_gw.ucg, res_gw.vcg
+        gw_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est, vcg_est)  # around 1.2627806e-05
+        print("GW RMSE:", gw_rmse)
+
+        assert gw_rmse < 1.3e-5
 
     def test_cyclogeostrophy_minimization(self):
-        ug_est, vg_est = _geostrophy(self.ssh, self.dXY, self.dXY, self.coriolis_factor, self.grid_angle, self.mask)
-        ucg_est, vcg_est, _ = _minimization_based(ug_est, vg_est,
-                                                          self.dXY, self.dXY, self.dXY, self.dXY,
-                                                          self.coriolis_factor, self.coriolis_factor, 
-                                                          self.grid_angle, self.grid_angle, 
-                                                          self.mask,
-                                                          1000, optax.sgd(learning_rate=0.005))
-        ucg_est_t = interpolation(ucg_est, self.mask, axis=1, padding="left")
-        vcg_est_t = interpolation(vcg_est, self.mask, axis=0, padding="left")
-        cyclo_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est_t, vcg_est_t)  # around .002
-        assert cyclo_rmse < .003
+        res_mb = minimization_based(
+            lat_t=self.lat, lon_t=self.lon, ug_t=self.ug, vg_t=self.vg, land_mask=self.land_mask
+        )
+
+        ucg_est, vcg_est = res_mb.ucg, res_mb.vcg
+        mb_rmse = self.compute_rmse(self.ucg, self.vcg, ucg_est, vcg_est)  # around 6.180092e-05
+        print("MB RMSE:", mb_rmse)
+
+        assert mb_rmse < 6.2e-5
 
     @staticmethod
     def compute_rmse(u, v, u_est, v_est) -> float:
-        return float(ge.compute_rmse(u, u_est) + ge.compute_rmse(v, v_est)) / 2
+        x = jnp.stack([u, v], axis=-1)
+        x_est = jnp.stack([u_est, v_est], axis=-1)
+        return jnp.sqrt(jnp.nanmean((x - x_est)**2))

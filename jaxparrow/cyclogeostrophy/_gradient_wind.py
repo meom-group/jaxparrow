@@ -3,26 +3,23 @@ import jax.numpy as jnp
 from jaxtyping import Float
 
 from ._core import (
-    CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result, _radius_of_curvature
+    CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result
 )
-from ..utils import kinematics, operators
+from ..utils import kinematics
 
 
 def gradient_wind(
-    lat_t: Float[jax.Array, "lat lon"],
-    lon_t: Float[jax.Array, "lat lon"],
-    ssh_t: Float[jax.Array, "lat lon"] = None,
-    ug_t: Float[jax.Array, "lat lon"] = None,
-    vg_t: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
-    return_geos: bool = False,
-    return_grids: bool = True
+    lat_t: Float[jax.Array, "y x"],
+    lon_t: Float[jax.Array, "y x"],
+    ssh_t: Float[jax.Array, "y x"] = None,
+    ug_t: Float[jax.Array, "y x"] = None,
+    vg_t: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
+    return_geos: bool = False
 ) -> CyclogeostrophyResult:
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using the gradient wind approximation.
-
-    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
     There are two modes of operation:
 
@@ -30,24 +27,27 @@ def gradient_wind(
        Geostrophic velocities will be computed from SSH.
 
     2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
-       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
-       and will be interpolated to U/V grids internally.
+       (and optionally ``land_mask``). Geostrophic velocities are provided on the T grid.
 
     Parameters
     ----------
-    lat_t : Float[jax.Array, "lat lon"]
-        Latitude of the T grid.
-    lon_t : Float[jax.Array, "lat lon"]
-        Longitude of the T grid.
-    ssh_t : Float[jax.Array, "lat lon"], optional
-        SSH field (on the T grid). Required if geostrophic velocities are not provided.
-    ug_t : Float[jax.Array, "lat lon"], optional
-        U component of geostrophic velocity on T grid. If provided with ``vg_t``,
-        bypasses SSH-based computation. Will be interpolated to U grid.
-    vg_t : Float[jax.Array, "lat lon"], optional
-        V component of geostrophic velocity on T grid. If provided with ``ug_t``,
-        bypasses SSH-based computation. Will be interpolated to V grid.
-    mask : Float[jax.Array, "lat lon"], optional
+    lat_t : Float[jax.Array, "y x"]
+        Latitude of the T grid
+    lon_t : Float[jax.Array, "y x"]
+        Longitude of the T grid
+    ssh_t : Float[jax.Array, "y x"], optional
+        SSH field (on the T grid)
+
+        Defaults to `None`, required if geostrophic velocities are not provided
+    ug_t : Float[jax.Array, "y x"], optional
+        U component of geostrophic velocity on T grid
+        
+        Defaults to `None`, required if ``ssh_t`` is not provided
+    vg_t : Float[jax.Array, "y x"], optional
+        V component of geostrophic velocity on T grid
+        
+        Defaults to `None`, required if ``ssh_t`` is not provided
+    land_mask : Float[jax.Array, "y x"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
@@ -57,94 +57,49 @@ def gradient_wind(
         If `True`, returns the geostrophic SSC velocity field in addition to the cyclogeostrophic one.
 
         Defaults to `False`
-    return_grids : bool, optional
-        If `True`, returns the U and V grids.
-
-        Defaults to `True`
 
     Returns
     -------
     CyclogeostrophyResult
         Named tuple containing:
-        - ``ucg``: U component of cyclogeostrophic velocity (on U grid)
-        - ``vcg``: V component of cyclogeostrophic velocity (on V grid)
+        - ``ucg``: $u$ component of cyclogeostrophic velocity, on the T grid
+        - ``vcg``: $v$ component of cyclogeostrophic velocity, on the T grid
         - ``ug``, ``vg``: Geostrophic velocities (if ``return_geos=True``)
-        - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
     """
     setup = setup_cyclogeostrophy(
-        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, land_mask=land_mask
     )
 
-    ucg_u, vcg_v = _gradient_wind(
-        setup.ug_u, setup.vg_v,
-        setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
-        setup.coriolis_factor_t, setup.is_land, setup.grid_angle_t
+    ucg, vcg = _gradient_wind(
+        setup.ug_t, setup.vg_t,
+        setup.dx_e_t, setup.dx_n_t, setup.dy_e_t, setup.dy_n_t, setup.J_t,
+        setup.coriolis_factor_t, 
+        setup.land_mask
     )
 
-    return assemble_result(
-        ucg_u, vcg_v, setup,
-        return_geos=return_geos,
-        return_grids=return_grids,
-    )
+    return assemble_result(ucg, vcg, setup, return_geos=return_geos)
 
 
 @jax.jit
 def _gradient_wind(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_t: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_t: Float[jax.Array, "lat lon"]
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
-    """
-    Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field from a Sea Surface Height (SSH) field
-    using the gradient wind equation.
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"]
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"]]:
+    R = kinematics._radius_of_curvature(ug_t, vg_t, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, land_mask)
 
-    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
-
-    Parameters
-    ----------
-    ug_u : Float[jax.Array, "lat lon"]
-        U component of the geostrophic SSC velocity field
-    vg_v : Float[jax.Array, "lat lon"]
-        V component of the geostrophic SSC velocity field
-    dx_u : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along `x` on the U grid
-    dx_v : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along `x` on the V grid
-    dy_u : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along `y` on the U grid
-    dy_v : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along `y` on the V grid
-    coriolis_factor_t : Float[jax.Array, "lat lon"]
-        Coriolis factor on the T grid
-    mask : Float[jax.Array, "lat lon"]
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
-    
-    Returns
-    -------
-    ucg_u : Float[jax.Array, "lat lon"]
-        U component of the cyclogeostrophic SSC velocity field (on the U grid)
-    vcg_v : Float[jax.Array, "lat lon"]
-        V component of the cyclogeostrophic SSC velocity field (on the V grid)
-    """
-    R = _radius_of_curvature(
-        ug_u, vg_v, dx_u, dx_v, dy_u, dy_v, mask, vel_on_uv=True, grid_angle_t=grid_angle_t
-    )
-
-    V_g = kinematics.magnitude(ug_u, vg_v, mask)
+    V_g = kinematics.magnitude(ug_t, vg_t, land_mask, uv_on_t=True)
     V_gr = 2 * V_g / (1 + jnp.sqrt(1 + 4 * V_g / (coriolis_factor_t * R)))
 
     ratio = V_gr / V_g
 
-    ratio_u = operators.interpolation(ratio, mask, axis=1, padding="right")
-    ratio_v = operators.interpolation(ratio, mask, axis=0, padding="right")
+    ucg = ratio * ug_t
+    vcg = ratio * vg_t
 
-    ucg_u = ratio_u * ug_u
-    vcg_v = ratio_v * vg_v
-
-    return ucg_u, vcg_v
+    return ucg, vcg

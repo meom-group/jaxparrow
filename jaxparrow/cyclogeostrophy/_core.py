@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jaxtyping import Float
 
 from ..geostrophy import geostrophy
-from ..utils import geometry, kinematics, operators, sanitize
+from ..utils import geometry, operators, sanitize
 
 
 # =============================================================================
@@ -18,59 +18,35 @@ class CyclogeostrophySetup(NamedTuple):
 
     Attributes
     ----------
-    is_land : Float[jax.Array, "lat lon"]
+    land_mask : Float[jax.Array, "y x"]
         Land mask where `True`/`1` indicates land
-    ug_u : Float[jax.Array, "lat lon"]
-        U component of geostrophic velocity on U grid
-    vg_v : Float[jax.Array, "lat lon"]
-        V component of geostrophic velocity on V grid
-    lat_u : Float[jax.Array, "lat lon"]
-        Latitudes of the U grid
-    lon_u : Float[jax.Array, "lat lon"]
-        Longitudes of the U grid
-    lat_v : Float[jax.Array, "lat lon"]
-        Latitudes of the V grid
-    lon_v : Float[jax.Array, "lat lon"]
-        Longitudes of the V grid
-    dx_u : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along x on U grid
-    dy_u : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along y on U grid
-    dx_v : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along x on V grid
-    dy_v : Float[jax.Array, "lat lon"]
-        Spatial steps in meters along y on V grid
-    coriolis_factor_u : Float[jax.Array, "lat lon"]
-        Coriolis factor on U grid
-    coriolis_factor_v : Float[jax.Array, "lat lon"]
-        Coriolis factor on V grid
-    coriolis_factor_t : Float[jax.Array, "lat lon"]
-        Coriolis factor on T grid
-    grid_angle_u : Float[jax.Array, "lat lon"]
-        Grid rotation angle on U grid (radians, counterclockwise from east)
-    grid_angle_v : Float[jax.Array, "lat lon"]
-        Grid rotation angle on V grid (radians, counterclockwise from east)
-    grid_angle_t : Float[jax.Array, "lat lon"]
-        Grid rotation angle on T grid (radians, counterclockwise from east)
+    ug_t : Float[jax.Array, "y x"]
+        $u$ component of geostrophic velocity, on the T grid
+    vg_t : Float[jax.Array, "y x"]
+        $v$ component of geostrophic velocity, on the T grid
+    dx_e_t : Float[jax.Array, "y x"]
+        Eastward displacement associated with one step in the x-index direction, on the T grid
+    dx_n_t : Float[jax.Array, "y x"]
+        Northward displacement associated with one step in the x-index direction, on the T grid
+    dy_e_t : Float[jax.Array, "y x"]
+        Eastward displacement associated with one step in the y-index direction, on the T grid
+    dy_n_t : Float[jax.Array, "y x"]
+        Northward displacement associated with one step in the y-index direction, on the T grid
+    J_t : Float[jax.Array, "y x"]
+        Jacobian of the transformation from grid to geographic coordinates, on the T grid
+    coriolis_factor_t : Float[jax.Array, "y x"]
+        Coriolis factor, on the T grid
     """
 
-    is_land: Float[jax.Array, "lat lon"]
-    ug_u: Float[jax.Array, "lat lon"]
-    vg_v: Float[jax.Array, "lat lon"]
-    lat_u: Float[jax.Array, "lat lon"]
-    lon_u: Float[jax.Array, "lat lon"]
-    lat_v: Float[jax.Array, "lat lon"]
-    lon_v: Float[jax.Array, "lat lon"]
-    dx_u: Float[jax.Array, "lat lon"]
-    dy_u: Float[jax.Array, "lat lon"]
-    dx_v: Float[jax.Array, "lat lon"]
-    dy_v: Float[jax.Array, "lat lon"]
-    coriolis_factor_u: Float[jax.Array, "lat lon"]
-    coriolis_factor_v: Float[jax.Array, "lat lon"]
-    coriolis_factor_t: Float[jax.Array, "lat lon"]
-    grid_angle_u: Float[jax.Array, "lat lon"]
-    grid_angle_v: Float[jax.Array, "lat lon"]
-    grid_angle_t: Float[jax.Array, "lat lon"]
+    land_mask: Float[jax.Array, "y x"]
+    ug_t: Float[jax.Array, "y x"]
+    vg_t: Float[jax.Array, "y x"]
+    dx_e_t: Float[jax.Array, "y x"]
+    dx_n_t: Float[jax.Array, "y x"]
+    dy_e_t: Float[jax.Array, "y x"]
+    dy_n_t: Float[jax.Array, "y x"]
+    J_t: Float[jax.Array, "y x"]
+    coriolis_factor_t: Float[jax.Array, "y x"]
 
 
 class CyclogeostrophyResult(NamedTuple):
@@ -83,34 +59,22 @@ class CyclogeostrophyResult(NamedTuple):
 
     Attributes
     ----------
-    ucg : Float[jax.Array, "lat lon"]
-        U component of cyclogeostrophic velocity on U grid
-    vcg : Float[jax.Array, "lat lon"]
-        V component of cyclogeostrophic velocity on V grid
-    ug : Float[jax.Array, "lat lon"] | None
-        U component of geostrophic velocity on U grid (if ``return_geos=True``)
-    vg : Float[jax.Array, "lat lon"] | None
-        V component of geostrophic velocity on V grid (if ``return_geos=True``)
-    lat_u : Float[jax.Array, "lat lon"] | None
-        Latitudes of U grid (if ``return_grids=True``)
-    lon_u : Float[jax.Array, "lat lon"] | None
-        Longitudes of U grid (if ``return_grids=True``)
-    lat_v : Float[jax.Array, "lat lon"] | None
-        Latitudes of V grid (if ``return_grids=True``)
-    lon_v : Float[jax.Array, "lat lon"] | None
-        Longitudes of V grid (if ``return_grids=True``)
+    ucg : Float[jax.Array, "y x"]
+        $u$ component of cyclogeostrophic velocity, on the T grid
+    vcg : Float[jax.Array, "y x"]
+        $v$ component of cyclogeostrophic velocity, on the T grid
+    ug : Float[jax.Array, "y x"] | None
+        $u$ component of geostrophic velocity, on the T grid (if ``return_geos=True``)
+    vg : Float[jax.Array, "y x"] | None
+        $v$ component of geostrophic velocity, on the T grid (if ``return_geos=True``)
     losses : Float[jax.Array, "n_it"] | None
         Cyclogeostrophic imbalance over iterations (if ``return_losses=True``)
     """
 
-    ucg: Float[jax.Array, "lat lon"]
-    vcg: Float[jax.Array, "lat lon"]
-    ug: Float[jax.Array, "lat lon"] | None = None
-    vg: Float[jax.Array, "lat lon"] | None = None
-    lat_u: Float[jax.Array, "lat lon"] | None = None
-    lon_u: Float[jax.Array, "lat lon"] | None = None
-    lat_v: Float[jax.Array, "lat lon"] | None = None
-    lon_v: Float[jax.Array, "lat lon"] | None = None
+    ucg: Float[jax.Array, "y x"]
+    vcg: Float[jax.Array, "y x"]
+    ug: Float[jax.Array, "y x"] | None = None
+    vg: Float[jax.Array, "y x"] | None = None
     losses: Float[jax.Array, "n_it"] | None = None
 
 
@@ -119,12 +83,12 @@ class CyclogeostrophyResult(NamedTuple):
 # =============================================================================
 
 def setup_cyclogeostrophy(
-    lat_t: Float[jax.Array, "lat lon"],
-    lon_t: Float[jax.Array, "lat lon"],
-    ssh_t: Float[jax.Array, "lat lon"] = None,
-    ug_t: Float[jax.Array, "lat lon"] = None,
-    vg_t: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None
+    lat_t: Float[jax.Array, "y x"],
+    lon_t: Float[jax.Array, "y x"],
+    ssh_t: Float[jax.Array, "y x"] = None,
+    ug_t: Float[jax.Array, "y x"] = None,
+    vg_t: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None
 ) -> CyclogeostrophySetup:
     """
     Computes all preliminary values needed for cyclogeostrophic calculations.
@@ -135,27 +99,26 @@ def setup_cyclogeostrophy(
     There are two modes of operation:
 
     1. **SSH mode**: Provide ``lat_t``, ``lon_t``, ``ssh_t`` (and optionally ``mask``).
-       Geostrophic velocities will be computed from SSH.
+       Geostrophic velocities will be computed from SSH
 
     2. **Geostrophic mode**: Provide ``lat_t``, ``lon_t``, ``ug_t``, ``vg_t``
-       (and optionally ``mask``). Geostrophic velocities are provided on the T grid
-       and will be interpolated to U/V grids internally.
+       (and optionally ``land_mask``). Geostrophic velocities are provided on the T grid
 
     Parameters
     ----------
-    lat_t : Float[jax.Array, "lat lon"]
+    lat_t : Float[jax.Array, "y x"]
         Latitudes of T grid.
-    lon_t : Float[jax.Array, "lat lon"]
+    lon_t : Float[jax.Array, "y x"]
         Longitudes of T grid.
-    ssh_t : Float[jax.Array, "lat lon"], optional
+    ssh_t : Float[jax.Array, "y x"], optional
         SSH field on T grid. Required if geostrophic velocities are not provided.
-    ug_t : Float[jax.Array, "lat lon"], optional
+    ug_t : Float[jax.Array, "y x"], optional
         U component of geostrophic velocity on T grid. If provided with ``vg_t``,
         bypasses SSH-based computation. Will be interpolated to U grid.
-    vg_t : Float[jax.Array, "lat lon"], optional
+    vg_t : Float[jax.Array, "y x"], optional
         V component of geostrophic velocity on T grid. If provided with ``ug_t``,
         bypasses SSH-based computation. Will be interpolated to V grid.
-    mask : Float[jax.Array, "lat lon"], optional
+    land_mask : Float[jax.Array, "y x"], optional
         Land mask where `1`/`True` is land. If None, inferred from ssh_t or ug_t nan values.
 
     Returns
@@ -172,68 +135,41 @@ def setup_cyclogeostrophy(
     use_geos_directly = ug_t is not None and vg_t is not None
 
     if use_geos_directly:
-        is_land = sanitize.init_land_mask(ug_t, mask)
-        # Interpolate ug_t, vg_t from T grid to U/V grids
-        ug_u = operators.interpolation(ug_t, is_land, axis=1, padding="right")
-        vg_v = operators.interpolation(vg_t, is_land, axis=0, padding="right")
+        land_mask = sanitize.init_land_mask(ug_t, land_mask)
     else:
-        # Traditional SSH-based computation
+        # SSH-based computation
         if ssh_t is None:
             raise ValueError(
                 "Either provide ssh_t to compute geostrophic velocities from SSH, "
                 "or provide ug_t, vg_t directly on the T grid."
             )
-        is_land = sanitize.init_land_mask(ssh_t, mask)
+        
+        land_mask = sanitize.init_land_mask(ssh_t, land_mask)
 
-        geos_results = geostrophy(
-            ssh_t, lat_t, lon_t, is_land, return_grids=True
-        )
+        ug_t, vg_t = geostrophy(ssh_t, lat_t, lon_t, land_mask)
 
-        ug_u = geos_results.ug
-        vg_v = geos_results.vg
+    dx_e, dx_n, dy_e, dy_n, J = geometry.grid_metrics(lat_t, lon_t)
 
-    # Compute U/V grids from T grid
-    lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-
-    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
-
-    coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
-    coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
-    coriolis_factor_t = geometry.compute_coriolis_factor(lat_t)
-
-    # Compute grid rotation angles for curvilinear grid support
-    grid_angle_u = geometry.compute_grid_angle(lat_u, lon_u)
-    grid_angle_v = geometry.compute_grid_angle(lat_v, lon_v)
-    grid_angle_t = geometry.compute_grid_angle(lat_t, lon_t)
+    f = geometry.coriolis_factor(lat_t)
 
     return CyclogeostrophySetup(
-        is_land=is_land,
-        ug_u=ug_u,
-        vg_v=vg_v,
-        lat_u=lat_u,
-        lon_u=lon_u,
-        lat_v=lat_v,
-        lon_v=lon_v,
-        dx_u=dx_u,
-        dy_u=dy_u,
-        dx_v=dx_v,
-        dy_v=dy_v,
-        coriolis_factor_u=coriolis_factor_u,
-        coriolis_factor_v=coriolis_factor_v,
-        coriolis_factor_t=coriolis_factor_t,
-        grid_angle_u=grid_angle_u,
-        grid_angle_v=grid_angle_v,
-        grid_angle_t=grid_angle_t,
+        land_mask=land_mask,
+        ug_t=ug_t,
+        vg_t=vg_t,
+        dx_e_t=dx_e,
+        dx_n_t=dx_n,
+        dy_e_t=dy_e,
+        dy_n_t=dy_n,
+        J_t=J,
+        coriolis_factor_t=f,
     )
 
 
 def assemble_result(
-    ucg_u: Float[jax.Array, "lat lon"],
-    vcg_v: Float[jax.Array, "lat lon"],
+    ucg_t: Float[jax.Array, "y x"],
+    vcg_t: Float[jax.Array, "y x"],
     setup: CyclogeostrophySetup,
     return_geos: bool = False,
-    return_grids: bool = True,
     return_losses: bool = False,
     losses: Float[jax.Array, "n_it"] = None,
 ) -> CyclogeostrophyResult:
@@ -242,10 +178,10 @@ def assemble_result(
 
     Parameters
     ----------
-    ucg_u : Float[jax.Array, "lat lon"]
-        U component of cyclogeostrophic velocity
-    vcg_v : Float[jax.Array, "lat lon"]
-        V component of cyclogeostrophic velocity
+    ucg_t : Float[jax.Array, "y x"]
+        $u$ component of cyclogeostrophic velocity
+    vcg_t : Float[jax.Array, "y x"]
+        $v$ component of cyclogeostrophic velocity
     setup : CyclogeostrophySetup
         Precomputed setup values
     return_geos : bool, optional
@@ -263,18 +199,14 @@ def assemble_result(
         Named tuple with computed velocities and optional fields
     """
     # Handle masked data (set land cells to NaN)
-    ucg_u = sanitize.sanitize_data(ucg_u, jnp.nan, setup.is_land)
-    vcg_v = sanitize.sanitize_data(vcg_v, jnp.nan, setup.is_land)
+    ucg_t = sanitize.sanitize_data(ucg_t, jnp.nan, setup.land_mask)
+    vcg_t = sanitize.sanitize_data(vcg_t, jnp.nan, setup.land_mask)
 
     return CyclogeostrophyResult(
-        ucg=ucg_u,
-        vcg=vcg_v,
-        ug=setup.ug_u if return_geos else None,
-        vg=setup.vg_v if return_geos else None,
-        lat_u=setup.lat_u if return_grids else None,
-        lon_u=setup.lon_u if return_grids else None,
-        lat_v=setup.lat_v if return_grids else None,
-        lon_v=setup.lon_v if return_grids else None,
+        ucg=ucg_t,
+        vcg=vcg_t,
+        ug=setup.ug_t if return_geos else None,
+        vg=setup.vg_t if return_geos else None,
         losses=losses if return_losses else None,
     )
 
@@ -284,179 +216,176 @@ def assemble_result(
 # =============================================================================
 
 def cyclogeostrophic_loss(
-    ug: Float[jax.Array, "lat lon"],
-    vg: Float[jax.Array, "lat lon"],
-    ucg: Float[jax.Array, "lat lon"],
-    vcg: Float[jax.Array, "lat lon"],
-    lat_t: Float[jax.Array, "lat lon"] = None,
-    lon_t: Float[jax.Array, "lat lon"] = None,
-    lat_u: Float[jax.Array, "lat lon"] = None,
-    lon_u: Float[jax.Array, "lat lon"] = None,
-    lat_v: Float[jax.Array, "lat lon"] = None,
-    lon_v: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
-    vel_on_uv: bool = True
+    ug: Float[jax.Array, "y x"],
+    vg: Float[jax.Array, "y x"],
+    ucg: Float[jax.Array, "y x"],
+    vcg: Float[jax.Array, "y x"],
+    lat_t: Float[jax.Array, "y x"] = None,
+    lon_t: Float[jax.Array, "y x"] = None,
+    lat_u: Float[jax.Array, "y x"] = None,
+    lon_u: Float[jax.Array, "y x"] = None,
+    lat_v: Float[jax.Array, "y x"] = None,
+    lon_v: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
+    uv_on_t: bool = True
 ) -> Float[jax.Array, ""]:
     """
-    Computes the cyclogeostrophic imbalance loss from a geostrophic SSC velocity field and a cyclogeostrophic SSC velocity field.
+    Computes the cyclogeostrophic imbalance loss from a geostrophic and a cyclogeostrophic velocity field.
 
-    The velocity fields can be provided either on the U and V grids (``vel_on_uv=True``) or on the T grid (``vel_on_uv=False``).
+    The velocity field can be provided either on the T grid (``uv_on_t=True``) or on the U/V grids (``uv_on_t=False``).
+
+    If provided, the ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are expected to follow the NEMO convention.
 
     Parameters
     ----------
-    ug : Float[jax.Array, "lat lon"]
-        U component of the geostrophic SSC velocity field
-    vg : Float[jax.Array, "lat lon"]
-        V component of the geostrophic SSC velocity field
-    ucg : Float[jax.Array, "lat lon"]
-        U component of the cyclogeostrophic SSC velocity field
-    vcg : Float[jax.Array, "lat lon"]
-        V component of the cyclogeostrophic SSC velocity field
-    lat_t : Float[jax.Array, "lat lon"], optional
+    ug : Float[jax.Array, "y x"]
+        $u$ component of the geostrophic velocity field
+    vg : Float[jax.Array, "y x"]
+        $v$ component of the geostrophic velocity field
+    ucg : Float[jax.Array, "y x"]
+        $u$ component of the cyclogeostrophic velocity field
+    vcg : Float[jax.Array, "y x"]
+        $v$ component of the cyclogeostrophic velocity field
+    lat_t : Float[jax.Array, "y x"], optional
         Latitudes of the T grid.
+        
         If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        
         Defaults to `None`
-    lon_t : Float[jax.Array, "lat lon"], optional
+    lon_t : Float[jax.Array, "y x"], optional
         Longitudes of the T grid.
+       
         If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        
         Defaults to `None`
-    lat_u : Float[jax.Array, "lat lon"], optional
+    lat_u : Float[jax.Array, "y x"], optional
         Latitudes of the U grid.
+        
         Defaults to `None`
-    lon_u : Float[jax.Array, "lat lon"], optional
+    lon_u : Float[jax.Array, "y x"], optional
         Longitudes of the U grid.
+        
         Defaults to `None`
-    lat_v : Float[jax.Array, "lat lon"], optional
+    lat_v : Float[jax.Array, "y x"], optional
         Latitudes of the V grid.
+        
         Defaults to `None`
-    lon_v : Float[jax.Array, "lat lon"], optional
+    lon_v : Float[jax.Array, "y x"], optional
         Longitudes of the V grid.
+        
         Defaults to `None`
-    mask : Float[jax.Array, "lat lon"], optional
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land).
-        If not provided, inferred from ``ug`` `nan` values.
-        Defaults to `None`
-    vel_on_uv : bool, optional
-        If `True`, ``ucg`` and ``vcg`` are on the U and V grids.
-        If `False`, they are on the T grid.
+    land_mask : Float[jax.Array, "y x"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+    uv_on_t : bool, optional
+        If `True`, the velocity components are assumed to be located on the T grid 
+        (this is important when manipulating staggered grids)
+        
         Defaults to `True`
-
     Returns
     -------
     loss : Float[jax.Array, ""]
         Cyclogeostrophic imbalance loss
     """
-    if mask is None:
-        mask = sanitize.init_land_mask(ug)
-
-    if not vel_on_uv:
-        ug = operators.interpolation(ug, mask, axis=1, padding="right")
-        vg = operators.interpolation(vg, mask, axis=0, padding="right")
-        ucg = operators.interpolation(ucg, mask, axis=1, padding="right")
-        vcg = operators.interpolation(vcg, mask, axis=0, padding="right")
-
-    if lat_u is None or lon_u is None or lat_v is None or lon_v is None:
-        if lat_t is None or lon_t is None:
-            raise ValueError("Either lat_t and lon_t, or lat_u, lon_u, lat_v, and lon_v must be provided")
-        lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-
-    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
-    coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
-    coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
-
-    return _cyclogeostrophic_loss(
-        ug, vg, ucg, vcg,
-        dx_u, dx_v, dy_u, dy_v,
-        coriolis_factor_u, coriolis_factor_v,
-        mask
+    u_imbalance, v_imbalance = cyclogeostrophic_imbalance(
+        ug, vg, ucg, vcg, lat_t, lon_t, lat_u, lon_u, lat_v, lon_v, land_mask, uv_on_t
     )
+
+    return jnp.nansum(u_imbalance ** 2 + v_imbalance ** 2)
 
 
 def cyclogeostrophic_imbalance(
-    ug: Float[jax.Array, "lat lon"],
-    vg: Float[jax.Array, "lat lon"],
-    ucg: Float[jax.Array, "lat lon"],
-    vcg: Float[jax.Array, "lat lon"],
-    lat_t: Float[jax.Array, "lat lon"] = None,
-    lon_t: Float[jax.Array, "lat lon"] = None,
-    lat_u: Float[jax.Array, "lat lon"] = None,
-    lon_u: Float[jax.Array, "lat lon"] = None,
-    lat_v: Float[jax.Array, "lat lon"] = None,
-    lon_v: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
-    vel_on_uv: bool = True
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
+    ug: Float[jax.Array, "y x"],
+    vg: Float[jax.Array, "y x"],
+    ucg: Float[jax.Array, "y x"],
+    vcg: Float[jax.Array, "y x"],
+    lat_t: Float[jax.Array, "y x"] = None,
+    lon_t: Float[jax.Array, "y x"] = None,
+    lat_u: Float[jax.Array, "y x"] = None,
+    lon_u: Float[jax.Array, "y x"] = None,
+    lat_v: Float[jax.Array, "y x"] = None,
+    lon_v: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
+    uv_on_t: bool = True,
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"]]:
     """
-    Computes the cyclogeostrophic imbalance of a 2d velocity field, on a C-grid (following NEMO convention).
+    Computes the cyclogeostrophic imbalance of a 2d velocity field.
 
     The velocity fields can be provided either on the U and V grids (``vel_on_uv=True``) or on the T grid (``vel_on_uv=False``).
 
     Parameters
     ----------
-    ug : Float[jax.Array, "lat lon"]
-        U component of the geostrophic velocity field
-    vg : Float[jax.Array, "lat lon"]
-        V component of the geostrophic velocity field
-    ucg : Float[jax.Array, "lat lon"]
-        U component of the cyclogeostrophic velocity field
-    vcg : Float[jax.Array, "lat lon"]
-        V component of the cyclogeostrophic velocity field
-    lat_t : Float[jax.Array, "lat lon"], optional
+    ug : Float[jax.Array, "y x"]
+        $u$ component of the geostrophic velocity field
+    vg : Float[jax.Array, "y x"]
+        $v$ component of the geostrophic velocity field
+    ucg : Float[jax.Array, "y x"]
+        $u$ component of the cyclogeostrophic velocity field
+    vcg : Float[jax.Array, "y x"]
+        $v$ component of the cyclogeostrophic velocity field
+    lat_t : Float[jax.Array, "y x"], optional
         Latitudes of the T grid.
+        
         If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        
         Defaults to `None`
-    lon_t : Float[jax.Array, "lat lon"], optional
+    lon_t : Float[jax.Array, "y x"], optional
         Longitudes of the T grid.
+       
         If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
+        
         Defaults to `None`
-    lat_u : Float[jax.Array, "lat lon"], optional
+    lat_u : Float[jax.Array, "y x"], optional
         Latitudes of the U grid.
+        
         Defaults to `None`
-    lon_u : Float[jax.Array, "lat lon"], optional
+    lon_u : Float[jax.Array, "y x"], optional
         Longitudes of the U grid.
+        
         Defaults to `None`
-    lat_v : Float[jax.Array, "lat lon"], optional
+    lat_v : Float[jax.Array, "y x"], optional
         Latitudes of the V grid.
+        
         Defaults to `None`
-    lon_v : Float[jax.Array, "lat lon"], optional
+    lon_v : Float[jax.Array, "y x"], optional
         Longitudes of the V grid.
+        
         Defaults to `None`
-    mask : Float[jax.Array, "lat lon"], optional
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land).
-        Defaults to `None`
-    vel_on_uv : bool, optional
-        If `True`, the velocity components are assumed to be located on the U and V grids.
-        If `False`, they are on the T grid.
+    land_mask : Float[jax.Array, "y x"], optional
+        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
+    uv_on_t : bool, optional
+        If `True`, the velocity components are assumed to be located on the T grid 
+        (this is important when manipulating staggered grids)
+        
         Defaults to `True`
 
     Returns
     -------
-    u_imbalance_u : Float[jax.Array, "lat lon"]
-        U component of the cyclogeostrophic imbalance, on the U grid
-    v_imbalance_v : Float[jax.Array, "lat lon"]
-        V component of the cyclogeostrophic imbalance, on the V grid
+    u_imbalance : Float[jax.Array, "y x"]
+        $u$ component of the cyclogeostrophic imbalance, on the T grid
+    v_imbalance : Float[jax.Array, "y x"]
+        $v$ component of the cyclogeostrophic imbalance, on the T grid
     """
-    if not vel_on_uv:
-        ug_u = operators.interpolation(ug, mask, axis=1, padding="right")
-        vg_v = operators.interpolation(vg, mask, axis=0, padding="right")
-        ucg_u = operators.interpolation(ucg, mask, axis=1, padding="right")
-        vcg_v = operators.interpolation(vcg, mask, axis=0, padding="right")
-    else:
-        ug_u = ug
-        vg_v = vg
-        ucg_u = ucg
-        vcg_v = vcg
+    if land_mask is None:
+        land_mask = sanitize.init_land_mask(ug)
 
-    if lat_u is None or lon_u is None or lat_v is None or lon_v is None:
-        if lat_t is None or lon_t is None:
+    if not uv_on_t:
+        ug = operators.interpolation(ug, axis=1, padding="left", land_mask=land_mask)  # U(i), U(i+1) -> T(i+1)
+        vg = operators.interpolation(vg, axis=0, padding="left", land_mask=land_mask)  # U(i), U(i+1) -> T(i+1)
+        ucg = operators.interpolation(ucg, axis=1, padding="right", land_mask=land_mask)
+        vcg = operators.interpolation(vcg, axis=0, padding="right", land_mask=land_mask)
+
+    if lat_t is None or lon_t is None:
+        if lat_u is not None and lon_u is not None:
+            lat_t = operators.interpolation(lat_u, axis=1, padding="left", land_mask=land_mask)
+            lon_t = operators.interpolation(lon_u, axis=1, padding="left", land_mask=land_mask)
+        elif lat_v is not None and lon_v is not None:
+            lat_t = operators.interpolation(lat_v, axis=0, padding="left", land_mask=land_mask)
+            lon_t = operators.interpolation(lon_v, axis=0, padding="left", land_mask=land_mask)
+        else:
             raise ValueError("Either lat_t and lon_t, or lat_u, lon_u, lat_v, and lon_v must be provided")
-        lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-
-    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
-    coriolis_factor_u = geometry.compute_coriolis_factor(lat_u)
-    coriolis_factor_v = geometry.compute_coriolis_factor(lat_v)
+    
+    # compute grid metrics once
+    dx_e, dx_n, dy_e, dy_n, J = geometry.grid_metrics(lat_t, lon_t)
 
     return _cyclogeostrophic_imbalance(
         ug_u, vg_v, ucg_u, vcg_v,
@@ -464,288 +393,106 @@ def cyclogeostrophic_imbalance(
     )
 
 
-def radius_of_curvature(
-    u: Float[jax.Array, "lat lon"],
-    v: Float[jax.Array, "lat lon"],
-    lat_t: Float[jax.Array, "lat lon"] = None,
-    lon_t: Float[jax.Array, "lat lon"] = None,
-    lat_u: Float[jax.Array, "lat lon"] = None,
-    lon_u: Float[jax.Array, "lat lon"] = None,
-    lat_v: Float[jax.Array, "lat lon"] = None,
-    lon_v: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
-    vel_on_uv: bool = True
-) -> Float[jax.Array, "lat lon"]:
-    """
-    Computes the radius of curvature of a 2d velocity field, on a C-grid (following NEMO convention).
-
-    The velocity field can be provided either on the U and V grids (``vel_on_uv=True``) or on the T grid (``vel_on_uv=False``).
-
-    Parameters
-    ----------
-    u : Float[jax.Array, "lat lon"]
-        U component of the velocity field
-    v : Float[jax.Array, "lat lon"]
-        V component of the velocity field
-    lat_t : Float[jax.Array, "lat lon"], optional
-        Latitudes of the T grid.
-        If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
-        Defaults to `None`
-    lon_t : Float[jax.Array, "lat lon"], optional
-        Longitudes of the T grid.
-        If ``lat_u``, ``lon_u``, ``lat_v``, and ``lon_v`` are not provided, ``lat_t`` and ``lon_t`` must be provided to compute them.
-        Defaults to `None`
-    lat_u : Float[jax.Array, "lat lon"], optional
-        Latitudes of the U grid.
-        Defaults to `None`
-    lon_u : Float[jax.Array, "lat lon"], optional
-        Longitudes of the U grid.
-        Defaults to `None`
-    lat_v : Float[jax.Array, "lat lon"], optional
-        Latitudes of the V grid.
-        Defaults to `None`
-    lon_v : Float[jax.Array, "lat lon"], optional
-        Longitudes of the V grid.
-        Defaults to `None`
-    mask : Float[jax.Array, "lat lon"], optional
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land).
-        Defaults to `None`
-    vel_on_uv : bool, optional
-        If `True`, ``u`` and ``v`` are on the U and V grids.
-        If `False`, they are on the T grid.
-        Defaults to `True`
-
-    Returns
-    -------
-    r : Float[jax.Array, "lat lon"]
-        The radius of curvature of the velocity field
-    """
-    if lat_u is None or lon_u is None or lat_v is None or lon_v is None:
-        if lat_t is None or lon_t is None:
-            raise ValueError("Either lat_t and lon_t, or lat_u, lon_u, lat_v, and lon_v must be provided")
-        lat_u, lon_u, lat_v, lon_v = geometry.compute_uv_grids(lat_t, lon_t)
-
-    dx_u, dy_u = geometry.compute_spatial_step(lat_u, lon_u)
-    dx_v, dy_v = geometry.compute_spatial_step(lat_v, lon_v)
-
-    return _radius_of_curvature(u, v, dx_u, dx_v, dy_u, dy_v, mask, vel_on_uv)
-
-
 # =============================================================================
 # Internal Functions
 # =============================================================================
 
 def _cyclogeostrophic_loss(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    ucg_u: Float[jax.Array, "lat lon"],
-    vcg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"] = None,
-    grid_angle_v: Float[jax.Array, "lat lon"] = None
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    ucg_t: Float[jax.Array, "y x"],
+    vcg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
 ) -> Float[jax.Array, ""]:
     u_imbalance, v_imbalance = _cyclogeostrophic_imbalance(
-        ug_u, vg_v, ucg_u, vcg_v,
-        dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-        mask, grid_angle_u, grid_angle_v
+        ug_t, vg_t, ucg_t, vcg_t, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, coriolis_factor_t, land_mask
     )
 
     return jnp.nansum(u_imbalance ** 2 + v_imbalance ** 2)
 
 
 def _cyclogeostrophic_imbalance(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    ucg_u: Float[jax.Array, "lat lon"],
-    vcg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"] = None,
-    grid_angle_v: Float[jax.Array, "lat lon"] = None
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
-    u_adv_v, v_adv_u = _advection(ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, mask, grid_angle_u, grid_angle_v)
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    ucg_t: Float[jax.Array, "y x"],
+    vcg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"]]:
+    u_adv_t, v_adv_t = _advection(ucg_t, vcg_t, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, land_mask)
 
-    u_imbalance_u = ucg_u + v_adv_u / coriolis_factor_u - ug_u
-    v_imbalance_v = vcg_v - u_adv_v / coriolis_factor_v - vg_v
+    u_imbalance = ucg_t + v_adv_t / coriolis_factor_t - ug_t
+    v_imbalance = vcg_t - u_adv_t / coriolis_factor_t - vg_t
 
-    return u_imbalance_u, v_imbalance_v
+    return u_imbalance, v_imbalance
 
 
 def _advection(
-    u_u: Float[jax.Array, "lat lon"],
-    v_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"] = None,
-    grid_angle_v: Float[jax.Array, "lat lon"] = None
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"]]:
+    u_t: Float[jax.Array, "y x"],
+    v_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"]]:
+    u_adv = _u_advection(u_t, v_t, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, land_mask)
+    v_adv = _v_advection(u_t, v_t, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, land_mask)
+
+    return u_adv, v_adv
+
+
+def _u_advection(
+    u_t: Float[jax.Array, "y x"],
+    v_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
+) -> Float[jax.Array, "y x"]:
     """
-    Computes the advection terms of a 2d velocity field, on a C-grid, following NEMO convention.
-
-    For curvilinear grids, gradients are rotated from grid coordinates to geographic coordinates
-    before computing the advection terms.
-
-    Parameters
-    ----------
-    u_u : Float[jax.Array, "lat lon"]
-        U component of the velocity field (on the U grid)
-    v_v : Float[jax.Array, "lat lon"]
-        V component of the SSC velocity field (on the V grid)
-    dx_u : Float[jax.Array, "lat lon"]
-        Spatial steps on the U grid along `x`, in meters
-    dy_u : Float[jax.Array, "lat lon"]
-        Spatial steps on the U grid along `y`, in meters
-    dx_v : Float[jax.Array, "lat lon"]
-        Spatial steps on the V grid along `x`, in meters
-    dy_v : Float[jax.Array, "lat lon"]
-        Spatial steps on the V grid along `y`, in meters
-    mask : Float[jax.Array, "lat lon"]
-        Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
-    grid_angle_u : Float[jax.Array, "lat lon"], optional
-        Grid rotation angle on U grid (radians). If None, assumes rectilinear grid (no rotation).
-    grid_angle_v : Float[jax.Array, "lat lon"], optional
-        Grid rotation angle on V grid (radians). If None, assumes rectilinear grid (no rotation).
-
-    Returns
-    -------
-    u_adv_v : Float[jax.Array, "lat lon"]
-        U component of the advection term, on the V grid
-    v_adv_u : Float[jax.Array, "lat lon"]
-        V component of the advection term, on the U grid
+    Computes u * ∂u/∂x + v * ∂u/∂y
     """
-    u_adv_v = _u_advection_v(u_u, v_v, dx_v, dy_v, mask, grid_angle_v)
-    v_adv_u = _v_advection_u(u_u, v_v, dx_u, dy_u, mask, grid_angle_u)
+    du_e_t, du_n_t = operators.horizontal_derivatives(
+        u_t, dx_e=dx_e_t, dx_n=dx_n_t, dy_e=dy_e_t, dy_n=dy_n_t, J=J_t, land_mask=land_mask
+    )
 
-    return u_adv_v, v_adv_u
+    u_adv = u_t * du_e_t + v_t * du_n_t
+
+    return u_adv
 
 
-def _u_advection_v(
-    u_u: Float[jax.Array, "lat lon"],
-    v_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_v: Float[jax.Array, "lat lon"] = None
-) -> Float[jax.Array, "lat lon"]:
+def _v_advection(
+    u_t: Float[jax.Array, "y x"],
+    v_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
+) -> Float[jax.Array, "y x"]:
     """
-    Computes u * ∂u/∂x + v * ∂u/∂y at V points in geographic coordinates.
+    Computes u * ∂v/∂x + v * ∂v/∂y
     """
-    # Grid-coordinate gradients
-    dudi_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
-    dudi_v = operators.interpolation(dudi_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
+    dv_e_t, dv_n_t = operators.horizontal_derivatives(
+        v_t, dx_e=dx_e_t, dx_n=dx_n_t, dy_e=dy_e_t, dy_n=dy_n_t, J=J_t, land_mask=land_mask
+    )
 
-    dudj_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-    dudj_v = operators.interpolation(dudj_f, mask, axis=1, padding="left")   # (F(i), F(i+1)) -> V(i+1)
+    v_adv = u_t * dv_e_t + v_t * dv_n_t
 
-    # Rotate to geographic coordinates if grid angle provided
-    if grid_angle_v is not None:
-        dudx_v, dudy_v = operators.rotate_to_geographic(dudi_v, dudj_v, grid_angle_v)
-    else:
-        dudx_v, dudy_v = dudi_v, dudj_v
-
-    u_t = operators.interpolation(u_u, mask, axis=1, padding="left")   # (U(i), U(i+1)) -> T(i+1)
-    u_v = operators.interpolation(u_t, mask, axis=0, padding="right")  # (T(j), T(j+1)) -> V(j)
-
-    u_adv_v = u_v * dudx_v + v_v * dudy_v  # V(j)
-
-    return u_adv_v
-
-
-def _v_advection_u(
-    u_u: Float[jax.Array, "lat lon"],
-    v_v: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"] = None
-) -> Float[jax.Array, "lat lon"]:
-    """
-    Computes u * ∂v/∂x + v * ∂v/∂y at U points in geographic coordinates.
-    """
-    # Grid-coordinate gradients
-    dvdi_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dvdi_u = operators.interpolation(dvdi_f, mask, axis=0, padding="left")   # (F(j), F(j+1)) -> U(j+1)
-
-    dvdj_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
-    dvdj_u = operators.interpolation(dvdj_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-
-    # Rotate to geographic coordinates if grid angle provided
-    if grid_angle_u is not None:
-        dvdx_u, dvdy_u = operators.rotate_to_geographic(dvdi_u, dvdj_u, grid_angle_u)
-    else:
-        dvdx_u, dvdy_u = dvdi_u, dvdj_u
-
-    v_t = operators.interpolation(v_v, mask, axis=0, padding="left")   # (V(j), V(j+1)) -> T(j+1)
-    v_u = operators.interpolation(v_t, mask, axis=1, padding="right")  # (T(i), T(i+1)) -> U(i)
-
-    v_adv_u = u_u * dvdx_u + v_u * dvdy_u  # U(i)
-
-    return v_adv_u
-
-
-def _radius_of_curvature(
-    u: Float[jax.Array, "lat lon"],
-    v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
-    vel_on_uv: bool,
-    grid_angle_t: Float[jax.Array, "lat lon"] = None
-) -> Float[jax.Array, "lat lon"]:
-    if not vel_on_uv:
-        u_t = u
-        v_t = v
-        u_u = operators.interpolation(u, mask, axis=1, padding="right")
-        v_v = operators.interpolation(v, mask, axis=0, padding="right")
-    else:
-        u_t = operators.interpolation(u, mask, axis=1, padding="left")
-        v_t = operators.interpolation(v, mask, axis=0, padding="left")
-        u_u = u
-        v_v = v
-
-    V_t = kinematics.magnitude(u_t, v_t, vel_on_uv=False)
-
-    # Derivatives along grid axes
-    du_di_t = operators.derivative(u_u, dx_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-    du_dj_f = operators.derivative(u_u, dy_u, mask, axis=0, padding="right")  # (U(j), U(j+1)) -> F(j)
-
-    dv_di_f = operators.derivative(v_v, dx_v, mask, axis=1, padding="right")  # (V(i), V(i+1)) -> F(i)
-    dv_dj_t = operators.derivative(v_v, dy_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
-
-    # Interpolate to T grid
-    du_dj_v = operators.interpolation(du_dj_f, mask, axis=1, padding="left")  # (F(i), F(i+1)) -> V(i+1)
-    du_dj_t = operators.interpolation(du_dj_v, mask, axis=0, padding="left")  # (V(j), V(j+1)) -> T(j+1)
-    dv_di_u = operators.interpolation(dv_di_f, mask, axis=0, padding="left")  # (F(j), F(j+1)) -> U(j+1)
-    dv_di_t = operators.interpolation(dv_di_u, mask, axis=1, padding="left")  # (U(i), U(i+1)) -> T(i+1)
-
-    # Rotate to geographic coordinates if grid angle is provided
-    if grid_angle_t is not None:
-        du_dx_t, du_dy_t = operators.rotate_to_geographic(du_di_t, du_dj_t, grid_angle_t)
-        dv_dx_t, dv_dy_t = operators.rotate_to_geographic(dv_di_t, dv_dj_t, grid_angle_t)
-    else:
-        du_dx_t = du_di_t
-        du_dy_t = du_dj_t
-        dv_dx_t = dv_di_t
-        dv_dy_t = dv_dj_t
-
-    numerator = V_t ** 3
-    denominator = u_t ** 2 * dv_dx_t - v_t ** 2 * du_dy_t - u_t * v_t * (du_dx_t - dv_dy_t)
-    r = numerator / denominator
-
-    return r
+    return v_adv

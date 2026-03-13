@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from functools import partial
 
 import jax
@@ -11,14 +10,13 @@ from ._core import CyclogeostrophyResult, setup_cyclogeostrophy, assemble_result
 
 
 def minimization_based(
-    lat_t: Float[jax.Array, "lat lon"],
-    lon_t: Float[jax.Array, "lat lon"],
-    ssh_t: Float[jax.Array, "lat lon"] = None,
-    ug_t: Float[jax.Array, "lat lon"] = None,
-    vg_t: Float[jax.Array, "lat lon"] = None,
-    mask: Float[jax.Array, "lat lon"] = None,
+    lat_t: Float[jax.Array, "y x"],
+    lon_t: Float[jax.Array, "y x"],
+    ssh_t: Float[jax.Array, "y x"] = None,
+    ug_t: Float[jax.Array, "y x"] = None,
+    vg_t: Float[jax.Array, "y x"] = None,
+    land_mask: Float[jax.Array, "y x"] = None,
     return_geos: bool = False,
-    return_grids: bool = True,
     return_losses: bool = False,
     n_it: int = 2000,
     optim: optax.GradientTransformation | str = "sgd",
@@ -27,8 +25,6 @@ def minimization_based(
     """
     Computes the cyclogeostrophic Sea Surface Current (SSC) velocity field
     using our minimization-based method.
-
-    The cyclogeostrophic SSC velocity field is computed on a C-grid, following NEMO convention.
 
     There are two modes of operation:
 
@@ -41,19 +37,19 @@ def minimization_based(
 
     Parameters
     ----------
-    lat_t : Float[jax.Array, "lat lon"]
+    lat_t : Float[jax.Array, "y x"]
         Latitude of the T grid.
-    lon_t : Float[jax.Array, "lat lon"]
+    lon_t : Float[jax.Array, "y x"]
         Longitude of the T grid.
-    ssh_t : Float[jax.Array, "lat lon"], optional
+    ssh_t : Float[jax.Array, "y x"], optional
         SSH field (on the T grid). Required if geostrophic velocities are not provided.
-    ug_t : Float[jax.Array, "lat lon"], optional
+    ug_t : Float[jax.Array, "y x"], optional
         U component of geostrophic velocity on T grid. If provided with ``vg_t``,
         bypasses SSH-based computation. Will be interpolated to U grid.
-    vg_t : Float[jax.Array, "lat lon"], optional
+    vg_t : Float[jax.Array, "y x"], optional
         V component of geostrophic velocity on T grid. If provided with ``ug_t``,
         bypasses SSH-based computation. Will be interpolated to V grid.
-    mask : Float[jax.Array, "lat lon"], optional
+    land_mask : Float[jax.Array, "y x"], optional
         Mask defining the marine area of the spatial domain; `1` or `True` stands for masked (i.e. land)
 
         If not provided, inferred from ``ssh_t`` or ``ug_t`` `nan` values
@@ -91,14 +87,13 @@ def minimization_based(
     -------
     CyclogeostrophyResult
         Named tuple containing:
-        - ``ucg``: U component of cyclogeostrophic velocity (on U grid)
-        - ``vcg``: V component of cyclogeostrophic velocity (on V grid)
+        - ``ucg``: $u$ component of cyclogeostrophic velocity, on the T grid
+        - ``vcg``: $v$ component of cyclogeostrophic velocity, on the T grid
         - ``ug``, ``vg``: Geostrophic velocities (if ``return_geos=True``)
-        - ``lat_u``, ``lon_u``, ``lat_v``, ``lon_v``: Grid coordinates (if ``return_grids=True``)
         - ``losses``: Cyclogeostrophic imbalance per iteration (if ``return_losses=True``)
     """
     setup = setup_cyclogeostrophy(
-        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, mask=mask
+        lat_t, lon_t, ssh_t=ssh_t, ug_t=ug_t, vg_t=vg_t, land_mask=land_mask
     )
 
     if isinstance(optim, str):
@@ -110,44 +105,36 @@ def minimization_based(
             "optim should be an optax.GradientTransformation optimizer, or a string referring to such an optimizer."
         )
     
-    ucg_u, vcg_v, losses = _minimization_based(
-        setup.ug_u, setup.vg_v,
-        setup.dx_u, setup.dx_v, setup.dy_u, setup.dy_v,
-        setup.coriolis_factor_u, setup.coriolis_factor_v,
-        setup.grid_angle_u, setup.grid_angle_v,
-        setup.is_land, n_it, optim
+    ucg, vcg, losses = _minimization_based(
+        setup.ug_t, setup.vg_t,
+        setup.dx_e_t, setup.dx_n_t, setup.dy_e_t, setup.dy_n_t, setup.J_t,
+        setup.coriolis_factor_t,
+        setup.land_mask, n_it, optim
     )
 
     return assemble_result(
-        ucg_u, vcg_v, setup,
-        return_geos=return_geos,
-        return_grids=return_grids,
-        return_losses=return_losses,
-        losses=losses,
+        ucg, vcg, setup, return_geos=return_geos, return_losses=return_losses, losses=losses
     )
 
 
 @partial(jax.jit, static_argnames=("n_it", "optim"))
 def _minimization_based(
-    ug_u: Float[jax.Array, "lat lon"],
-    vg_v: Float[jax.Array, "lat lon"],
-    dx_u: Float[jax.Array, "lat lon"],
-    dx_v: Float[jax.Array, "lat lon"],
-    dy_u: Float[jax.Array, "lat lon"],
-    dy_v: Float[jax.Array, "lat lon"],
-    coriolis_factor_u: Float[jax.Array, "lat lon"],
-    coriolis_factor_v: Float[jax.Array, "lat lon"],
-    grid_angle_u: Float[jax.Array, "lat lon"],
-    grid_angle_v: Float[jax.Array, "lat lon"],
-    mask: Float[jax.Array, "lat lon"],
+    ug_t: Float[jax.Array, "y x"],
+    vg_t: Float[jax.Array, "y x"],
+    dx_e_t: Float[jax.Array, "y x"],
+    dx_n_t: Float[jax.Array, "y x"],
+    dy_e_t: Float[jax.Array, "y x"],
+    dy_n_t: Float[jax.Array, "y x"],
+    J_t: Float[jax.Array, "y x"],
+    coriolis_factor_t: Float[jax.Array, "y x"],
+    land_mask: Float[jax.Array, "y x"],
     n_it: int,
     optim: optax.GradientTransformation
-) -> tuple[Float[jax.Array, "lat lon"], Float[jax.Array, "lat lon"], Float[jax.Array, "n_it"]]:
+) -> tuple[Float[jax.Array, "y x"], Float[jax.Array, "y x"], Float[jax.Array, "n_it"]]:
     def loss_fn(args):
-        ucg_u, vcg_v = args
+        ucg, vcg = args
         return _cyclogeostrophic_loss(
-            ug_u, vg_v, ucg_u, vcg_v, dx_u, dx_v, dy_u, dy_v, coriolis_factor_u, coriolis_factor_v,
-            mask, grid_angle_u, grid_angle_v
+            ug_t, vg_t, ucg, vcg, dx_e_t, dx_n_t, dy_e_t, dy_n_t, J_t, coriolis_factor_t, land_mask
         )
     
     def step_fn(carry, _):
@@ -162,10 +149,6 @@ def _minimization_based(
 
         return params + (opt_state,), loss
     
-    carry, losses = lax.scan(
-        step_fn,
-        (ug_u, vg_v, optim.init((ug_u, vg_v))),
-        xs=None, length=n_it
-    )
+    carry, losses = lax.scan(step_fn, (ug_t, vg_t, optim.init((ug_t, vg_t))), xs=None, length=n_it)
     
     return *carry[:-1], losses
